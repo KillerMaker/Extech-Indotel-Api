@@ -14,31 +14,40 @@ namespace Exatech_Indotel_API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddAuthorization();
+            //builder.Services.AddAuthorization();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            builder.Services.AddHttpClient();
 
             builder.Services.AddOptions<AppOptions>().Bind(builder.Configuration);
 
             builder.Services.AddTransient<ISiubenApiProxy, SiubenApiProxy>();
             builder.Services.AddTransient<IWisproApiProxy, WisproApiProxy>();
+            builder.Services.AddTransient<IClientsService, ClientsService>();
 
-            builder.Services.AddHostedService<EmailNotificationSender>();
+            //builder.Services.AddHostedService<EmailNotificationSender>();
 
             var app = builder.Build();
 
+            app.UseSwagger();
+
+            app.UseSwaggerUI();
+
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            //app.UseAuthorization();
 
             app.MapGet("clients/check", async (
-                [FromServices] ClientsService clientsService,
+                [FromServices] IClientsService clientsService,
                 [FromQuery] string documentNumber,
                 [FromQuery] string? phoneNumber,
                 [FromQuery] string? email) => Results.Ok(await clientsService.CheckClient(documentNumber, phoneNumber, email))
             );
 
             app.MapPost("clients/create", async (
-                [FromServices] ClientsService clientsService,
-                [FromBody] WisproClient wisproClient) => Results.Ok(await clientsService.CreateClient(wisproClient))
+                [FromServices] IClientsService clientsService,
+                [FromBody] WisproClientDto wisproClient) => Results.Ok(await clientsService.CreateClient(wisproClient))
             );
 
 

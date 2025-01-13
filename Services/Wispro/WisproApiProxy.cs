@@ -1,6 +1,8 @@
 ﻿using Exatech_Indotel_API.Models.Wispro;
 using Exatech_Indotel_API.Utilities;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Exatech_Indotel_API.Services.Wispro
 {
@@ -18,14 +20,18 @@ namespace Exatech_Indotel_API.Services.Wispro
             _httpClient.DefaultRequestHeaders.Add("Authorization", _appOptions.WisproApiKey);
         }
 
-        public async Task<WisproClient> CreateClient(WisproClient client)
+        public async Task<WisproClient?> CreateClient(WisproClient client)
         {
             var response = await _httpClient.PostAsJsonAsync($"?name = {client.Name}", client);
 
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/clients failed with code: {response.StatusCode}");
 
-            return await response.Content.ReadFromJsonAsync<WisproClient>() ?? new();
+            var json = await response.Content.ReadAsStringAsync();
+
+            var obj = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(json);
+
+            return obj?.Data; 
         }
 
         public async Task<WisproClient?> GetClient(string? documentNumber, string? phoneNumber, string? email)
@@ -37,7 +43,7 @@ namespace Exatech_Indotel_API.Services.Wispro
                 { "email_eq", email }
             };
 
-            var queryString = string.Join("&", dictionary
+            var queryString = "?" + string.Join("&", dictionary
                 .Where(x => x.Value is not null)
                 .Select(x => $"{x.Key}={x.Value}"));
             
@@ -46,7 +52,13 @@ namespace Exatech_Indotel_API.Services.Wispro
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/clients?{queryString} failed with code: {response.StatusCode}");
 
-            return await response.Content.ReadFromJsonAsync<WisproClient>() ?? null;
+            string json = await response.Content.ReadAsStringAsync();
+
+            var obj = JsonSerializer.Deserialize<WisproGetResponse<WisproClient>>(json) ?? null;
+
+            var result = obj?.Data?.First();
+
+            return result;
         }
     }
 }

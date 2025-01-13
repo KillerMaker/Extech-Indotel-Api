@@ -14,17 +14,17 @@ namespace Exatech_Indotel_API.Services.Clients
         private readonly IWisproApiProxy _wisproApiProxy;
         private readonly ISiubenApiProxy _siubenApiProxy;
 
-        private readonly static string _htmlTemplate;
+       // private readonly static string _htmlTemplate;
 
-        private readonly EventHubProducerClient _eventproducerClient;
+        //private readonly EventHubProducerClient _eventproducerClient;
 
-        static ClientsService() => _htmlTemplate = File.ReadAllText("Templates/ClientCreated.html");
+       // static ClientsService() => _htmlTemplate = File.ReadAllText("Templates/ClientCreated.html");
         
-        public ClientsService(ISiubenApiProxy siubenApiProxy, IWisproApiProxy wisproApiProxy, EventHubProducerClient eventHubProducerClient)
+        public ClientsService(ISiubenApiProxy siubenApiProxy, IWisproApiProxy wisproApiProxy /*, EventHubProducerClient eventHubProducerClient*/)
         {
             _wisproApiProxy = wisproApiProxy;
             _siubenApiProxy = siubenApiProxy;
-            _eventproducerClient = eventHubProducerClient;
+           // _eventproducerClient = eventHubProducerClient;
         }
 
         public async Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email)
@@ -43,33 +43,45 @@ namespace Exatech_Indotel_API.Services.Clients
             return result;
         }
 
-        public async Task<string> CreateClient(WisproClient client)
+        public async Task<string> CreateClient(WisproClientDto client)
         {
-            var response = await _wisproApiProxy.CreateClient(client);
-
-            var notification = new EmailNotification
+            var wisproClient = new WisproClient
             {
-                To = client.Email,
-                Subject = "Cliente Creado",
-                Body = _htmlTemplate.Replace("{{clientName}}", client.Name),
+                Name = client.Name,
+                Email = client.Email,
+                Address = client.Address,
+                City = client.City,
+                Phone = client.Phone,
+                PhoneMobile = client.PhoneMobile,
+                State = client.State,
+                NationalIdentificationNumber = client.NationalIdentificationNumber
             };
 
-            _ = Task.Run(async () => {
-                using EventDataBatch eventBatch = await _eventproducerClient.CreateBatchAsync();
+            var response = await _wisproApiProxy.CreateClient(wisproClient);
 
-                EventData eventData = new EventData
-                {
-                    CorrelationId = Guid.NewGuid().ToString(),
-                    EventBody = BinaryData.FromString(JsonSerializer.Serialize(notification)),
-                    MessageId = Guid.NewGuid().ToString(),
-                    ContentType = "application/json"
-                };
+            //var notification = new EmailNotification
+            //{
+            //    To = client.Email,
+            //    Subject = "Cliente Creado",
+            //    Body = _htmlTemplate.Replace("{{clientName}}", client.Name),
+            //};
 
-                if (eventBatch?.TryAdd(eventData) ?? false)
-                    await _eventproducerClient.SendAsync(eventBatch);
-            });
+            //_ = Task.Run(async () => {
+            //    using EventDataBatch eventBatch = await _eventproducerClient.CreateBatchAsync();
 
-            return response.Id;   
+            //    EventData eventData = new EventData
+            //    {
+            //        CorrelationId = Guid.NewGuid().ToString(),
+            //        EventBody = BinaryData.FromString(JsonSerializer.Serialize(notification)),
+            //        MessageId = Guid.NewGuid().ToString(),
+            //        ContentType = "application/json"
+            //    };
+
+            //    if (eventBatch?.TryAdd(eventData) ?? false)
+            //        await _eventproducerClient.SendAsync(eventBatch);
+            //});
+
+            return response?.Id ?? string.Empty;   
         }
     }
 }

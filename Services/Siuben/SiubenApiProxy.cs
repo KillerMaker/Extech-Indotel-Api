@@ -1,6 +1,7 @@
 ﻿using Exatech_Indotel_API.Models.Siuben;
 using Exatech_Indotel_API.Utilities;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace Exatech_Indotel_API.Services.Siuben
 {
@@ -31,14 +32,17 @@ namespace Exatech_Indotel_API.Services.Siuben
             var token = await response.Content.ReadFromJsonAsync<SiubenLoginResponse>() ??
                 throw new UnauthorizedAccessException();
 
-            _httpClient.DefaultRequestHeaders.Add("Token", token.Token);
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token.Token}");
         }
 
-        public async Task<GetContractResponse> GetContract(string documentNumber)
+        public async Task<GetContractResponse?> GetContract(string documentNumber)
         {
             await Authorize();
 
             var response = await _httpClient.GetAsync($"/api/Data/get/{documentNumber}");
+
+            if (response.StatusCode.Equals(HttpStatusCode.NotFound))
+                return null;
 
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Siuben API: /api/Data/get/ failed with code: {response.StatusCode}");
