@@ -31,7 +31,10 @@ namespace Exatech_Indotel_API.Controllers
         {
             var response = await _clientsService.CreateClient(request);
 
-            return Ok(response);
+            if(string.IsNullOrEmpty(response))
+                return BadRequest(new {errorMessage = "Cliente ya existe en la base de datos"});
+
+            return Ok( new { clientId = response });
         }
     }
 }

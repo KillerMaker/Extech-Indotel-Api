@@ -10,5 +10,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
         Task<IEnumerable<Client>> GetAll();
         Task Create(Client client);
         Task AddContractNumber(string wisproId, string contractNumber);
+
+        Task<bool> Exists(string nationalIdentificationNumber);
     }
 }

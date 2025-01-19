@@ -31,5 +31,8 @@ namespace Exatech_Indotel_API.Models.Client
 
         [JsonPropertyName("state")]
         public string State { get; set; } = string.Empty;
+
+        [JsonPropertyName("pobertyLevel")]
+        public int PobertyLevel { get; set; }
     }
 }

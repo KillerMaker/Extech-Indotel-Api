@@ -36,9 +36,10 @@ namespace Exatech_Indotel_API.Services.Authorization
 
             ClaimsIdentity claimsIdentity = new ClaimsIdentity(new Claim[]
             {
-                    new Claim("name", validUser?.Name ?? string.Empty),
-                    new Claim("email", validUser?.Email ?? string.Empty),
-                    new Claim("role", validUser?.Role?.RoleName ?? string.Empty)
+                new Claim("name", validUser?.Name ?? string.Empty),
+                new Claim("email", validUser?.Email ?? string.Empty),
+                new Claim("role", validUser?.Role?.RoleName ?? string.Empty),
+                new Claim("userId", validUser?.UserId.ToString() ?? "0")
             });
 
             var token = new JwtSecurityToken(

@@ -16,10 +16,18 @@ namespace Exatech_Indotel_API
 
             builder.AddJwtAuthentication();
 
+            builder.AddEventHubConsumer();
+
+            builder.AddEventHubProducer();
+
             builder.Services.AddControllers();
 
+            builder.Services.AddHttpContextAccessor();
+
             builder.Services.AddAuthorization();
+
             builder.Services.AddEndpointsApiExplorer();
+
             builder.Services.AddSwaggerGen();
 
             builder.Services.AddHttpClient();
@@ -32,7 +40,7 @@ namespace Exatech_Indotel_API
 
             builder.Services.AddServices();
 
-            //builder.Services.AddHostedService<EmailNotificationSender>();
+            builder.Services.AddHostedService<EmailProcessorBackgroundService>();
 
             var app = builder.Build();
 

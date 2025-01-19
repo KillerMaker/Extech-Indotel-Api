@@ -11,12 +11,12 @@ using System.Text.Json;
 
 namespace Exatech_Indotel_API.Services.Email
 {
-    public class EmailNotificationSender : BackgroundService
+    public class EmailProcessorBackgroundService : BackgroundService
     {
         private readonly AppOptions _appOptions;
         private readonly EventProcessorClient _eventProcessorClient;
 
-        public EmailNotificationSender(IOptions<AppOptions> options, EventProcessorClient eventProcessorClient)
+        public EmailProcessorBackgroundService(IOptions<AppOptions> options, EventProcessorClient eventProcessorClient)
         {
             _appOptions = options.Value;
             _eventProcessorClient = eventProcessorClient;
@@ -25,10 +25,15 @@ namespace Exatech_Indotel_API.Services.Email
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _eventProcessorClient.ProcessEventAsync += ProcessEventHandler;
+            _eventProcessorClient.ProcessErrorAsync += ProcessErrorHandler;
 
             await _eventProcessorClient.StartProcessingAsync(stoppingToken);
         }
 
+        private async Task ProcessErrorHandler(ProcessErrorEventArgs args)
+        {
+            Console.WriteLine(args.Exception.Message);
+        }
         private async Task ProcessEventHandler(ProcessEventArgs eventArgs)
         {
             var data = Encoding.UTF8.GetString(eventArgs.Data.Body.ToArray());

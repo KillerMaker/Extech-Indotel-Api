@@ -22,7 +22,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             return connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
         }
 
-        public Task Create(Client client)
+        public async Task Create(Client client)
         {
             var query = @"INSERT INTO Client (
                             WisproId, 
@@ -54,7 +54,18 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
 
             using var connection = _connectionFactory.GetOpenConnection();
 
-            return connection.ExecuteAsync(query, client);
+            await connection.ExecuteAsync(query, client);
+        }
+
+        public async Task<bool> Exists(string nationalIdentificationNumber)
+        {
+            var query = "SELECT * FROM Client WHERE NationalIdentificationNumber = @NationalIdentificationNumber";
+
+            using var connection = _connectionFactory.GetOpenConnection();
+
+            var client = await connection.QueryFirstOrDefaultAsync<Client>(query, new { NationalIdentificationNumber = nationalIdentificationNumber });
+
+            return client != null;
         }
 
         public async Task<IEnumerable<Client>> GetAll()

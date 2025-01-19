@@ -1,11 +1,15 @@
 ﻿using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
+using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Models.Clients;
 using Exatech_Indotel_API.Models.Email;
 using Exatech_Indotel_API.Models.Wispro;
+using Exatech_Indotel_API.Repositories.ClientRepository;
+using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Services.Siuben;
 using Exatech_Indotel_API.Services.Wispro;
+using Exatech_Indotel_API.Utilities;
 using System.Text.Json;
 
 namespace Exatech_Indotel_API.Services.Clients
@@ -14,78 +18,62 @@ namespace Exatech_Indotel_API.Services.Clients
     {
         private readonly IWisproApiProxy _wisproApiProxy;
         private readonly ISiubenApiProxy _siubenApiProxy;
+        private readonly IClientRepository _clientRepository;
+        private readonly IHttpContextAccessor _contextAccesor;
+        private readonly IEmailSenderService _emailSender;
 
-       // private readonly static string _htmlTemplate;
-
-        //private readonly EventHubProducerClient _eventproducerClient;
-
-       // static ClientsService() => _htmlTemplate = File.ReadAllText("Templates/ClientCreated.html");
-        
-        public ClientsService(ISiubenApiProxy siubenApiProxy, IWisproApiProxy wisproApiProxy /*, EventHubProducerClient eventHubProducerClient*/)
+        public ClientsService(
+            ISiubenApiProxy siubenApiProxy, 
+            IWisproApiProxy wisproApiProxy, 
+            IClientRepository clientRepository, 
+            IHttpContextAccessor contextAccessor,
+            IEmailSenderService emailSenderService)
         {
             _wisproApiProxy = wisproApiProxy;
             _siubenApiProxy = siubenApiProxy;
-           // _eventproducerClient = eventHubProducerClient;
+            _clientRepository = clientRepository;
+            _contextAccesor = contextAccessor;
+            _emailSender = emailSenderService;
         }
 
         public async Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email)
         {
-            var result = new CheckClientResponse();
-
             var wisproTask = _wisproApiProxy.GetClient(documentNumber, phoneNumber, email);
 
             var siubenTask = _siubenApiProxy.GetContract(documentNumber);
 
             await Task.WhenAll(wisproTask, siubenTask);
 
-            result.ClientId = wisproTask.Result?.Id ?? null;
-            result.ContractNumber = siubenTask.Result?.ContractNumber ?? null;
-            result.ExistsInWispro = !string.IsNullOrEmpty(wisproTask.Result?.Id);
-            result.ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null;
-
-            return result;
+            return new CheckClientResponse {
+                ClientId = wisproTask.Result?.Id ?? null,
+                ContractNumber = siubenTask.Result?.ContractNumber ?? null,
+                ExistsInWispro = !string.IsNullOrEmpty(wisproTask.Result?.Id),
+                ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null
+            };
         }
 
-        public async Task<string> CreateClient(ClientCreateDto client)
+        public async Task<string> CreateClient(ClientCreateDto clientDto)
         {
-            var wisproClient = new WisproClient
-            {
-                Name = client.Name,
-                Email = client.Email,
-                Street = client.Street,
-                Number = client.Number,
-                City = client.City,
-                Phone = client.Phone,
-                PhoneMobile = client.PhoneMobile,
-                State = client.State,
-                NationalIdentificationNumber = client.NationalIdentificationNumber
-            };
+            if (await _clientRepository.Exists(clientDto.NationalIdentificationNumber))
+                return string.Empty;
 
-            var response = await _wisproApiProxy.CreateClient(wisproClient);
+            var wisproClient = clientDto.ToWisproClient();
 
-            //var notification = new EmailNotification
-            //{
-            //    To = client.Email,
-            //    Subject = "Cliente Creado",
-            //    Body = _htmlTemplate.Replace("{{clientName}}", client.Name),
-            //};
+            var userId = _contextAccesor.HttpContext?.User.Claims
+                .First(claim => claim.Type.Equals("userId")).Value ?? throw new Exception();
+            
+            var wisproResponse = await _wisproApiProxy.CreateClient(wisproClient);
 
-            //_ = Task.Run(async () => {
-            //    using EventDataBatch eventBatch = await _eventproducerClient.CreateBatchAsync();
+            if (wisproResponse?.Id is null)
+                throw new AggregateException("Failed to create Client in Wispro");
 
-            //    EventData eventData = new EventData
-            //    {
-            //        CorrelationId = Guid.NewGuid().ToString(),
-            //        EventBody = BinaryData.FromString(JsonSerializer.Serialize(notification)),
-            //        MessageId = Guid.NewGuid().ToString(),
-            //        ContentType = "application/json"
-            //    };
+            var clientEntity = clientDto.ToClient(wisproResponse.Id, userId);
 
-            //    if (eventBatch?.TryAdd(eventData) ?? false)
-            //        await _eventproducerClient.SendAsync(eventBatch);
-            //});
+            await _clientRepository.Create(clientEntity);
 
-            return response?.Id ?? string.Empty;   
+            await _emailSender.SendEmail(clientEntity, EventType.ClientCreation);
+
+            return wisproResponse.Id;   
         }
     }
 }
