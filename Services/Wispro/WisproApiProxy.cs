@@ -56,9 +56,10 @@ namespace Exatech_Indotel_API.Services.Wispro
 
             var obj = JsonSerializer.Deserialize<WisproGetResponse<WisproClient>>(json) ?? null;
 
-            var result = obj?.Data?.First();
+            if(obj?.Data?.Any() ?? false)
+                return obj.Data.First();
 
-            return result;
+            return null;
         }
     }
 }

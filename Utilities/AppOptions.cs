@@ -12,5 +12,7 @@ namespace Exatech_Indotel_API.Utilities
         public string EmailPassword { get; set; } = string.Empty;
         public string? EmailHost { get; set; } = null;
         public int EmailPort { get; set; }
+        public string SecretKey { get; set; } = string.Empty;
+        public string DatabaseConnectionString { get; set; } = string.Empty;
     }
 }

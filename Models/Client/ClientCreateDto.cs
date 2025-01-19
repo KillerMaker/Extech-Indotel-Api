@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Exatech_Indotel_API.Models.Wispro
+namespace Exatech_Indotel_API.Models.Client
 {
-    public class WisproClientDto
+    public class ClientCreateDto
     {
 
         [JsonPropertyName("name")]
@@ -12,10 +12,13 @@ namespace Exatech_Indotel_API.Models.Wispro
         public string Email { get; set; } = string.Empty;
 
         [JsonPropertyName("nationalIdentificationNumber")]
-        public string NationalIdentificationNumber {  get; set; } = string.Empty;
+        public string NationalIdentificationNumber { get; set; } = string.Empty;
 
-        [JsonPropertyName("address")]
-        public string Address { get; set; } = string.Empty;
+        [JsonPropertyName("street")]
+        public string Street { get; set; } = string.Empty;
+
+        [JsonPropertyName("number")]
+        public string Number { get; set; } = string.Empty;
 
         [JsonPropertyName("phone")]
         public string Phone { get; set; } = string.Empty;

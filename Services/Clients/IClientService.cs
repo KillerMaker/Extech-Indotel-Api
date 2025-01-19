@@ -1,5 +1,5 @@
-﻿using Exatech_Indotel_API.Models.Clients;
-using Exatech_Indotel_API.Models.Wispro;
+﻿using Exatech_Indotel_API.Models.Client;
+using Exatech_Indotel_API.Models.Clients;
 
 namespace Exatech_Indotel_API.Services.Clients
 {
@@ -7,6 +7,6 @@ namespace Exatech_Indotel_API.Services.Clients
     {
         Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email);
 
-        Task<string> CreateClient(WisproClientDto client);
+        Task<string> CreateClient(ClientCreateDto client);
     }
 }

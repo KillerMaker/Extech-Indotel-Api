@@ -3,8 +3,8 @@ using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Services.Siuben;
 using Exatech_Indotel_API.Services.Wispro;
 using Exatech_Indotel_API.Utilities;
-using Microsoft.AspNetCore.Mvc;
-using Exatech_Indotel_API.Models.Wispro;
+using Exatech_Indotel_API.Services.Authorization;
+using Exatech_Indotel_API.Utilities.Factories;
 
 namespace Exatech_Indotel_API
 {
@@ -14,7 +14,11 @@ namespace Exatech_Indotel_API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //builder.Services.AddAuthorization();
+            builder.AddJwtAuthentication();
+
+            builder.Services.AddControllers();
+
+            builder.Services.AddAuthorization();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -22,9 +26,11 @@ namespace Exatech_Indotel_API
 
             builder.Services.AddOptions<AppOptions>().Bind(builder.Configuration);
 
-            builder.Services.AddTransient<ISiubenApiProxy, SiubenApiProxy>();
-            builder.Services.AddTransient<IWisproApiProxy, WisproApiProxy>();
-            builder.Services.AddTransient<IClientsService, ClientsService>();
+            builder.Services.AddSingleton<IDatabaseConnectionFactory, DatabaseConnectionFactory>();
+
+            builder.Services.AddRepositories();
+
+            builder.Services.AddServices();
 
             //builder.Services.AddHostedService<EmailNotificationSender>();
 
@@ -36,20 +42,9 @@ namespace Exatech_Indotel_API
 
             app.UseHttpsRedirection();
 
-            //app.UseAuthorization();
+            app.MapControllers();
 
-            app.MapGet("clients/check", async (
-                [FromServices] IClientsService clientsService,
-                [FromQuery] string documentNumber,
-                [FromQuery] string? phoneNumber,
-                [FromQuery] string? email) => Results.Ok(await clientsService.CheckClient(documentNumber, phoneNumber, email))
-            );
-
-            app.MapPost("clients/create", async (
-                [FromServices] IClientsService clientsService,
-                [FromBody] WisproClientDto wisproClient) => Results.Ok(await clientsService.CreateClient(wisproClient))
-            );
-
+            app.UseAuthorization();
 
             app.Run();
         }

@@ -1,5 +1,6 @@
 ﻿using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
+using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Models.Clients;
 using Exatech_Indotel_API.Models.Email;
 using Exatech_Indotel_API.Models.Wispro;
@@ -39,17 +40,20 @@ namespace Exatech_Indotel_API.Services.Clients
 
             result.ClientId = wisproTask.Result?.Id ?? null;
             result.ContractNumber = siubenTask.Result?.ContractNumber ?? null;
+            result.ExistsInWispro = !string.IsNullOrEmpty(wisproTask.Result?.Id);
+            result.ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null;
 
             return result;
         }
 
-        public async Task<string> CreateClient(WisproClientDto client)
+        public async Task<string> CreateClient(ClientCreateDto client)
         {
             var wisproClient = new WisproClient
             {
                 Name = client.Name,
                 Email = client.Email,
-                Address = client.Address,
+                Street = client.Street,
+                Number = client.Number,
                 City = client.City,
                 Phone = client.Phone,
                 PhoneMobile = client.PhoneMobile,
