@@ -5,9 +5,12 @@ using Exatech_Indotel_API.Models.Email;
 using Exatech_Indotel_API.Utilities;
 using Microsoft.Extensions.Options;
 using System.Net;
-using System.Net.Mail;
+//using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace Exatech_Indotel_API.Services.Email
 {
@@ -45,23 +48,37 @@ namespace Exatech_Indotel_API.Services.Email
             string sender = _appOptions.EmailSender;
             string password = _appOptions.EmailPassword;
 
-            var client = new SmtpClient(_appOptions.EmailHost, _appOptions.EmailPort)
+            var mail = new MimeMessage();
+
+            mail.Sender = new MailboxAddress("Exatech", sender);
+            mail.From.Add(MailboxAddress.Parse(sender));
+            mail.Subject = notification.Subject;
+
+            mail.To.Add(MailboxAddress.Parse(notification.To));
+            
+            foreach(var copy in notification.CC ?? Array.Empty<string>())
+                mail.Cc.Add(MailboxAddress.Parse(copy));
+
+            var builder = new BodyBuilder
             {
-                Credentials = new NetworkCredential(sender, password),
-                EnableSsl = true
+                HtmlBody = notification.Body
             };
 
-            var message = new MailMessage(
-                sender,
-                notification.To,
-                notification.Subject,
-                notification.Body
-                );
+            mail.Body = builder.ToMessageBody();
 
-            foreach(var copy in notification.CC ?? Array.Empty<string>())
-                message.CC.Add(copy);
+            using var smtpClient = new SmtpClient();
 
-            await client.SendMailAsync(message);
+            await smtpClient.ConnectAsync(
+                _appOptions.EmailHost, 
+                _appOptions.EmailPort,
+                SecureSocketOptions.SslOnConnect,
+                eventArgs.CancellationToken);
+
+            await smtpClient.AuthenticateAsync(sender, password, eventArgs.CancellationToken);
+
+            var s = await smtpClient.SendAsync(mail, eventArgs.CancellationToken);
+
+            await smtpClient.DisconnectAsync(true, eventArgs.CancellationToken);
         }
 
         

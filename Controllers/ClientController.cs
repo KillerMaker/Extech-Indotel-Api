@@ -36,5 +36,17 @@ namespace Exatech_Indotel_API.Controllers
 
             return Ok( new { clientId = response });
         }
+
+        //[Authorize]
+        //[HttpPut("change-contract")]
+        //public async Task<IActionResult> UpdateClient([FromBody] ClientUpdateDto request)
+        //{
+        //    var response = await _clientsService.UpdateClient(request);
+
+        //    if(string.IsNullOrEmpty(response))
+        //        return BadRequest(new {errorMessage = "Cliente no existe en la base de datos"});
+
+        //    return Ok( new { clientId = response });
+        //}
     }
 }

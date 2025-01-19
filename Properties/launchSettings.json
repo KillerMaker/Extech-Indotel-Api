@@ -11,10 +11,10 @@
         "EventHubName": "email-notifications",
         "ClientCreationTemplate": "ClientCreated",
         "ClientUpdateRequestTemplate": "ClientUpdated",
-        "EmailSender": "emmanuelmtr1234@gmail.com",
-        "EmailReciver": "emmanuelmtr1234@gmail.com",
-        "EmailHost": "smtp-gmail.com",
-        "EmailPort": "587"
+        "EmailSender": "internet@exatech.com.do",
+        "EmailReciver": "emmanuel.mtr1234@gmail.com",
+        "EmailHost": "mail.exclusivehosting.net",
+        "EmailPort": "465"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7297;http://localhost:5166"

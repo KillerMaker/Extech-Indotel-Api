@@ -6,6 +6,8 @@
 
         public required string WisproId { get; set;}
 
+        public required int WisproPublicId { get; set; }
+
         public required int CreatedById { get; set; }
 
         public required string Name { get; set; }

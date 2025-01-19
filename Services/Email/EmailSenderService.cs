@@ -26,7 +26,7 @@ namespace Exatech_Indotel_API.Services.Email
         public async Task SendEmail(Client client, EventType eventType)
         {
             (string templateName, string emailSubject) = eventType switch {
-                EventType.ClientCreation => (_appOptions.ClientCreationTemplate, "Cliente creado en Wispro"),
+                EventType.ClientCreation => (_appOptions.ClientCreationTemplate, "Cliente Superate creado en Wispro"),
                 EventType.ContractUpdateRequest => (_appOptions.ClientUpdateRequestTemplate, "Cliente solicita cambio de contrato"),
                 _ => (string.Empty, string.Empty)
             };
