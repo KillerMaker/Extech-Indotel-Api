@@ -4,9 +4,9 @@
     {
         public int ClientId { get; set; }
 
-        public required string WisproId { get; set;}
+        public required int PublicId { get; set; }
 
-        public required int WisproPublicId { get; set; }
+        public required string WisproId { get; set;}
 
         public required int CreatedById { get; set; }
 

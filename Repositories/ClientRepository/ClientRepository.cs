@@ -36,7 +36,8 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
                             PhoneMobile,
                             NationalIdentificationNumber,
                             City,
-                            State
+                            State,
+                            PublicId   
                         )
                         VALUES(
                             @WisproId,
@@ -50,7 +51,8 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
                             @PhoneMobile,
                             @NationalIdentificationNumber,
                             @City,
-                            @State)";
+                            @State,
+                            @PublicId)";
 
             using var connection = _connectionFactory.GetOpenConnection();
 
@@ -68,7 +70,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             return client != null;
         }
 
-        public async Task<IEnumerable<Client>> GetAll()
+        public async Task<IEnumerable<Client>> GetClientsWithoutContract()
         {
             var query = "SELECT * FROM Client";
 

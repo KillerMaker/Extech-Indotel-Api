@@ -27,14 +27,14 @@ namespace Exatech_Indotel_API.Controllers
 
         [Authorize]
         [HttpPost("create")]
-        public async Task<IActionResult> CreateClient([FromBody] ClientCreateDto request)
+        public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
         {
             var response = await _clientsService.CreateClient(request);
 
-            if(string.IsNullOrEmpty(response))
+            if(response is null)
                 return BadRequest(new {errorMessage = "Cliente ya existe en la base de datos"});
 
-            return Ok( new { clientId = response });
+            return Ok(response);
         }
 
         //[Authorize]

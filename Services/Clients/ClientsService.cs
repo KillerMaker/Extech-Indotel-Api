@@ -52,10 +52,10 @@ namespace Exatech_Indotel_API.Services.Clients
             };
         }
 
-        public async Task<string> CreateClient(ClientCreateDto clientDto)
+        public async Task<CreateClientResponse?> CreateClient(CreateClientRequest clientDto)
         {
             if (await _clientRepository.Exists(clientDto.NationalIdentificationNumber))
-                return string.Empty;
+                return null;
 
             var wisproClient = clientDto.ToWisproClient();
 
@@ -64,16 +64,16 @@ namespace Exatech_Indotel_API.Services.Clients
             
             var wisproResponse = await _wisproApiProxy.CreateClient(wisproClient);
 
-            if (wisproResponse?.Id is null)
+            if (wisproResponse?.Id is null || wisproResponse?.PublicId is null)
                 throw new AggregateException("Failed to create Client in Wispro");
 
-            var clientEntity = clientDto.ToClient(wisproResponse.Id, userId);
+            var clientEntity = clientDto.ToClient(wisproResponse.Id, userId, wisproResponse.PublicId.Value);
 
             await _clientRepository.Create(clientEntity);
 
-            await _emailSender.SendEmail(clientEntity, EventType.ClientCreation);
+            _ = Task.Run(async()=> await _emailSender.SendEmail(clientEntity, EventType.ClientCreation));
 
-            return wisproResponse.Id;   
+            return clientEntity.ToCreateClientResponse();   
         }
     }
 }

@@ -7,7 +7,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
     {
         Task<Client?> GetByWisproId(string id);
         Task<Client?> GetByEmail(string email);
-        Task<IEnumerable<Client>> GetAll();
+        Task<IEnumerable<Client>> GetClientsWithoutContract();
         Task Create(Client client);
         Task AddContractNumber(string wisproId, string contractNumber);
 

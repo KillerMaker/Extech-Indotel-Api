@@ -27,7 +27,7 @@ namespace Exatech_Indotel_API.Services.Authorization
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var hashedPassword = GetHashedPassword(user.Password);
+            var hashedPassword = user.Password.Sha256Hash();
 
             var validUser = await _repository.CheckUserEmailAndPassword(user.Email, hashedPassword);
 
@@ -53,21 +53,6 @@ namespace Exatech_Indotel_API.Services.Authorization
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return jwt;
-        }
-
-        private string GetHashedPassword(string rawPassword)
-        {
-            var hashedPassBytes = SHA256.Create()
-                    .ComputeHash(Encoding.UTF8.GetBytes(rawPassword));
-
-            StringBuilder builder = new StringBuilder();
-
-            foreach (var item in hashedPassBytes)
-                builder.Append(item.ToString("x2"));
-
-            return builder.ToString();
-        }
-
-        
+        }        
     }
 }

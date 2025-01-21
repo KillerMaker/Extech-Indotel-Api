@@ -23,22 +23,31 @@ namespace Exatech_Indotel_API.Services.Email
             _emailTemplateRepository = emailtemplateRepository;
         }
 
-        public async Task SendEmail(Client client, EventType eventType)
+        public async Task SendEmail(Client client, EventType eventType, IEnumerable<string>? copies = null)
         {
-            (string templateName, string emailSubject) = eventType switch {
+            await SendEmail<Client>(client, eventType, ExtensionMethods.FillTemplate, copies);
+        }
+
+        public async Task SendEmail<T>(T data, EventType eventType, Func<EmailTemplate, T, string> fillTemplate, IEnumerable<string>? copies = null)
+        {
+            (string templateName, string emailSubject) = eventType switch
+            {
                 EventType.ClientCreation => (_appOptions.ClientCreationTemplate, "Cliente Superate creado en Wispro"),
                 EventType.ContractUpdateRequest => (_appOptions.ClientUpdateRequestTemplate, "Cliente solicita cambio de contrato"),
+                EventType.UserCreation => (_appOptions.UserCreationTemplate, "Usuario creado en el portal Exatech"),
                 _ => (string.Empty, string.Empty)
             };
 
             var template = await _emailTemplateRepository.Get(templateName);
 
+
             var notification = new EmailNotification
             {
-                Body = template.FillTemplate(client),
+                Body = fillTemplate.Invoke(template, data),
                 Subject = emailSubject,
                 To = _appOptions.EmailReciver,
-                EventType = eventType
+                EventType = eventType,
+                CC = copies
             };
 
             using EventDataBatch eventBatch = await _eventproducerClient.CreateBatchAsync();

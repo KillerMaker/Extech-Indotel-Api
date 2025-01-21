@@ -40,7 +40,24 @@ namespace Exatech_Indotel_API.Repositories.UserRepository
 
         public Task CreateUser(User user)
         {
-            throw new NotImplementedException();
+            var query = @"INSERT INTO AppUser (
+                            Email,
+                            Password,
+                            Name,
+                            Phone,
+                            RoleId
+                          )
+                          VALUES (
+                            @Email,
+                            @Password,
+                            @Name,
+                            @Phone,
+                            @RoleId
+                          )";
+
+            var connection = _connectionFactory.GetOpenConnection();
+
+            return connection.ExecuteAsync(query, user);
         }
 
         public Task DeleteUser(int id)

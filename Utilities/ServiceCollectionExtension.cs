@@ -14,6 +14,7 @@ using Azure.Storage.Blobs;
 using Azure.Messaging.EventHubs.Consumer;
 using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
+using Exatech_Indotel_API.Services.User;
 
 namespace Exatech_Indotel_API
 {
@@ -58,6 +59,7 @@ namespace Exatech_Indotel_API
             services.AddTransient<IClientRepository, ClientRepository>();
             services.AddTransient<IUserRepository, UserRepository>();
             services.AddTransient<IEmailTemplateRepository, EmailTemplateRepository>();
+            services.AddTransient<IUserRepository, UserRepository>();
 
             return services; 
         }
@@ -69,6 +71,7 @@ namespace Exatech_Indotel_API
             services.AddTransient<IClientsService, ClientsService>();
             services.AddTransient<IAuthorizationService, AuthorizationService>();
             services.AddTransient<IEmailSenderService, EmailSenderService>();
+            services.AddTransient<IUserService, UserService>();
 
             return services;
         }

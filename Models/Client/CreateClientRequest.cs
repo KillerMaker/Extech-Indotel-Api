@@ -2,7 +2,7 @@
 
 namespace Exatech_Indotel_API.Models.Client
 {
-    public class ClientCreateDto
+    public class CreateClientRequest
     {
 
         [JsonPropertyName("name")]

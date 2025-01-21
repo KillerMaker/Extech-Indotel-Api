@@ -11,6 +11,6 @@ namespace Exatech_Indotel_API.Models.Wispro
         public object? Meta { get; set; }
 
         [JsonPropertyName("data")]
-        public IEnumerable<T?>? Data { get; set; }
+        public IEnumerable<T>? Data { get; set; }
     }
 }

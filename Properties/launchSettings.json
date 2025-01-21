@@ -7,14 +7,15 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "SiubenUrl": "https://servicios.siuben.gob.do:2043",
-        "WisproUrl": "https://www.cloud.wispro.co/api/v1/clients",
+        "WisproUrl": "https://www.cloud.wispro.co/api/v1",
         "EventHubName": "email-notifications",
         "ClientCreationTemplate": "ClientCreated",
         "ClientUpdateRequestTemplate": "ClientUpdated",
         "EmailSender": "internet@exatech.com.do",
         "EmailReciver": "emmanuel.mtr1234@gmail.com",
         "EmailHost": "mail.exclusivehosting.net",
-        "EmailPort": "465"
+        "EmailPort": "465",
+        "UserCreationTemplate": "UserCreated"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7297;http://localhost:5166"

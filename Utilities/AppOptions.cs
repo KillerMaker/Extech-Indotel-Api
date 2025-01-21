@@ -21,5 +21,6 @@ namespace Exatech_Indotel_API.Utilities
         public string EventHubConnectionString {  get; set; } = string.Empty;
         public string BlobContainerName {  get; set; } = string.Empty;
         public string BlobStorageConnectionString { get; set; } = string.Empty;
+        public string UserCreationTemplate { get; set; }
     }
 }

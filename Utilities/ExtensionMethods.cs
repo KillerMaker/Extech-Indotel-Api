@@ -1,7 +1,10 @@
 ﻿using Azure;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Client;
+using Exatech_Indotel_API.Models.User;
 using Exatech_Indotel_API.Models.Wispro;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Exatech_Indotel_API.Utilities
 {
@@ -23,9 +26,10 @@ namespace Exatech_Indotel_API.Utilities
                 .Replace("$$PhoneMobile$$", client.PhoneMobile ?? string.Empty)
                 .Replace("$$NationalIdentificationNumber$$", client.NationalIdentificationNumber)
                 .Replace("$$City$$", client.City ?? string.Empty)
-                .Replace("$$State$$", client.State ?? string.Empty);
+                .Replace("$$State$$", client.State ?? string.Empty)
+                .Replace("$$PublicId$$",client.PublicId.ToString());
         }
-        public static Client ToClient(this ClientCreateDto client, string wisproId, string userId) =>
+        public static Client ToClient(this CreateClientRequest client, string wisproId, string userId, int publicId) =>
             new Client
             {
                 WisproId = wisproId,
@@ -40,10 +44,11 @@ namespace Exatech_Indotel_API.Utilities
                 PhoneMobile = client.PhoneMobile,
                 NationalIdentificationNumber = client.NationalIdentificationNumber,
                 City = client.City,
-                State = client.State
+                State = client.State,
+                PublicId = publicId
             };
 
-        public static WisproClient ToWisproClient(this ClientCreateDto client) =>
+        public static WisproClient ToWisproClient(this CreateClientRequest client) =>
             new WisproClient
             {
                 Name = client.Name,
@@ -56,6 +61,46 @@ namespace Exatech_Indotel_API.Utilities
                 State = client.State,
                 NationalIdentificationNumber = client.NationalIdentificationNumber
             };
+
+        public static CreateClientResponse ToCreateClientResponse(this Client client) =>
+            new CreateClientResponse
+            {
+                Name = client.Name,
+                WisproId = client.WisproId,
+                PublicId = client.PublicId,
+                Email = client.Email ?? string.Empty,
+                NationalIdentificationNumber = client.NationalIdentificationNumber,
+                Street = client.Street,
+                Number = client.Number,
+                Phone = client.Phone ?? string.Empty,
+                PhoneMobile = client.PhoneMobile ?? string.Empty,
+                City = client.City ?? string.Empty,
+                State = client.State ?? string.Empty,
+                PobertyLevel = client.PobertyLevel
+            };
+
+        public static User ToUser(CreateUserRequest user) =>
+            new User
+            {
+                Name = user.Name,
+                Email = user.Email,
+                Password = user.Password,
+                RoleId = user.RoleId,
+                Phone = user.Phone
+            };
+
+        public static string Sha256Hash(this string s)
+        {
+            var hashedPassBytes = SHA256.Create()
+                    .ComputeHash(Encoding.UTF8.GetBytes(s));
+
+            StringBuilder builder = new StringBuilder();
+
+            foreach (var item in hashedPassBytes)
+                builder.Append(item.ToString("x2"));
+
+            return builder.ToString();
+        }
 
     }
 }
