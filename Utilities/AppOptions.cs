@@ -6,7 +6,8 @@ namespace Exatech_Indotel_API.Utilities
         public string SiubenUrl { get; set; } = string.Empty;
         public string SiubenPassword { get; set; } = string.Empty;
         public string SiubenUsername { get; set; } = string.Empty;
-        public string WisproUrl { get; set; } = string.Empty;
+        public string WisproClientsUrl { get; set; } = string.Empty;
+        public string WisproContractsUrl { get; set; } = string.Empty;
         public string WisproApiKey { get; set; } = string.Empty;
         public string EmailSender { get; set; } = string.Empty;
         public string EmailReciver {  get; set; } = string.Empty;

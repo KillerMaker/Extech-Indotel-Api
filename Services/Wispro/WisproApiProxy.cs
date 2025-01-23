@@ -1,6 +1,7 @@
 ﻿using Exatech_Indotel_API.Models.Wispro;
 using Exatech_Indotel_API.Repositories.ClientRepository;
 using Exatech_Indotel_API.Utilities;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,20 +11,29 @@ namespace Exatech_Indotel_API.Services.Wispro
     public class WisproApiProxy : IWisproApiProxy
     {
         private readonly AppOptions _appOptions;
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _clientsHttpClient;
+        private readonly HttpClient _contractsHttpClient;
+        private readonly IMemoryCache _cache;
 
-        public WisproApiProxy(IOptions<AppOptions>options, IHttpClientFactory httpClientFactory)
+        public WisproApiProxy(IOptions<AppOptions>options, IHttpClientFactory httpClientFactory, IMemoryCache cache)
         {
             _appOptions = options.Value;
-            _httpClient = httpClientFactory.CreateClient();
 
-            _httpClient.BaseAddress = new Uri(_appOptions.WisproUrl);
-            _httpClient.DefaultRequestHeaders.Add("Authorization", _appOptions.WisproApiKey);
+            _contractsHttpClient = httpClientFactory.CreateClient();
+            _clientsHttpClient = httpClientFactory.CreateClient();
+
+            _clientsHttpClient.BaseAddress = new Uri(_appOptions.WisproClientsUrl);
+            _contractsHttpClient.BaseAddress = new Uri(_appOptions.WisproContractsUrl);
+
+            _clientsHttpClient.DefaultRequestHeaders.Add("Authorization", _appOptions.WisproApiKey);
+            _contractsHttpClient.DefaultRequestHeaders.Add("Authorization", _appOptions.WisproApiKey);
+
+            _cache = cache;
         }
 
         public async Task<WisproClient?> CreateClient(WisproClient client)
         {
-            var createResponse = await _httpClient.PostAsJsonAsync($"/clients?name = {client.Name}", client);
+            var createResponse = await _clientsHttpClient.PostAsJsonAsync($"?name = {client.Name}", client);
 
             if (!createResponse.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/clients failed with code: {createResponse.StatusCode}");
@@ -39,6 +49,9 @@ namespace Exatech_Indotel_API.Services.Wispro
 
         public async Task<WisproClient?> GetClient(string? documentNumber, string? phoneNumber, string? email)
         {
+            if(_cache.Get<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
+                return client;
+
             var dictionary = new Dictionary<string, string?>
             {
                 { "national_identification_number_eq", documentNumber },
@@ -46,11 +59,11 @@ namespace Exatech_Indotel_API.Services.Wispro
                 { "email_eq", email }
             };
 
-            var queryString = "/clients?" + string.Join("&", dictionary
+            var queryString = string.Join("&", dictionary
                 .Where(x => x.Value is not null)
                 .Select(x => $"{x.Key}={x.Value}"));
             
-            var response = await _httpClient.GetAsync(queryString);
+            var response = await _clientsHttpClient.GetAsync(queryString);
 
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/clients?{queryString} failed with code: {response.StatusCode}");
@@ -60,15 +73,25 @@ namespace Exatech_Indotel_API.Services.Wispro
             var obj = JsonSerializer.Deserialize<WisproGetResponse<WisproClient>>(json) ?? null;
 
             if(obj?.Data?.Any() ?? false)
-                return obj.Data.First();
+            {
+                var result = obj.Data.First();
 
+                _cache.Set($"wispro-{documentNumber}", result, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(12)
+                });
+
+                return result;
+            }
+                
             return null;
         }
 
         public async Task<IEnumerable<WisproContract>> GetContracsByDateRange(DateTime startDate, DateTime endDate)
         {
-            var response =  await _httpClient
-                .GetAsync($"/contracts?created_at_before={endDate.ToString("yyyy-MM-dd")}&created_at_after={startDate.ToString("yyyy-MM-dd")}");
+            var queryString = $"?created_at_before={endDate.ToString("yyyy-MM-ddT00:00:00Z")}&created_at_after={startDate.ToString("yyyy-MM-ddT00:00:00Z")}";
+
+            var response =  await _contractsHttpClient.GetAsync(queryString);
 
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/contracts failed with code: {response.StatusCode}");

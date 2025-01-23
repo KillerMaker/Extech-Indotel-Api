@@ -20,6 +20,8 @@ namespace Exatech_Indotel_API
 
             builder.AddEventHubProducer();
 
+            builder.Services.AddQuartzScheduledJob();
+
             builder.Services.AddMemoryCache();
 
             builder.Services.AddControllers();

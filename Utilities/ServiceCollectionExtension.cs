@@ -15,6 +15,8 @@ using Azure.Messaging.EventHubs.Consumer;
 using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
 using Exatech_Indotel_API.Services.User;
+using Quartz;
+using Exatech_Indotel_API.Services.Quartz;
 
 namespace Exatech_Indotel_API
 {
@@ -94,6 +96,27 @@ namespace Exatech_Indotel_API
                 });
 
             return builder.Services;
+        }
+
+        public static IServiceCollection AddQuartzScheduledJob(this IServiceCollection services)
+        {
+            services.AddQuartz(configure =>
+            {
+                var jobKey = new JobKey(nameof(ScheduledJob));
+
+                configure.AddJob<ScheduledJob>(jobKey)
+                    .AddTrigger(trigger => trigger
+                        .ForJob(jobKey)
+                        .WithDailyTimeIntervalSchedule(24, IntervalUnit.Hour, builder => builder
+                            .StartingDailyAt(new TimeOfDay(0,0))));
+            });
+
+            services.AddQuartzHostedService(options =>
+            {
+                options.WaitForJobsToComplete = true;
+            });
+
+            return services;
         }
 
     }

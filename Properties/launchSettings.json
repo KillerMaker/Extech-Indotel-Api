@@ -7,7 +7,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "SiubenUrl": "https://servicios.siuben.gob.do:2043",
-        "WisproUrl": "https://www.cloud.wispro.co/api/v1",
+        "WisproClientsUrl": "https://www.cloud.wispro.co/api/v1/clients",
+        "WisproContractsUrl": "https://www.cloud.wispro.co/api/v1/contracts",
         "EventHubName": "email-notifications",
         "ClientCreationTemplate": "ClientCreated",
         "ClientUpdateRequestTemplate": "ClientUpdated",
