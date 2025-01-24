@@ -1,5 +1,6 @@
 ﻿using Exatech_Indotel_API.Models.Siuben;
 using Exatech_Indotel_API.Utilities;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Net;
 
@@ -19,12 +20,14 @@ namespace Exatech_Indotel_API.Services.Siuben
 
         private async Task Authorize()
         {
+ 
             var login = new SiubenLoginRequest
             {
                 Username = _appOptions.SiubenUsername,
                 Password = _appOptions.SiubenPassword
             };
 
+            _httpClient.Timeout = TimeSpan.FromSeconds(100);
             var response = await _httpClient.PostAsJsonAsync("/api/auth/login", login);
 
             response.EnsureSuccessStatusCode();
