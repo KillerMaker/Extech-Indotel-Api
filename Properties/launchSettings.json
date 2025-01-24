@@ -13,7 +13,7 @@
         "ClientCreationTemplate": "ClientCreated",
         "ClientUpdateRequestTemplate": "ClientUpdated",
         "EmailSender": "internet@exatech.com.do",
-        "EmailReciver": "emmanuel.mtr1234@gmail.com",
+        "EmailReciver": "internet@exatech.com.do",
         "EmailHost": "mail.exclusivehosting.net",
         "EmailPort": "465",
         "UserCreationTemplate": "UserCreated"

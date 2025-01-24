@@ -71,7 +71,7 @@ namespace Exatech_Indotel_API.Services.Clients
 
             await _clientRepository.Create(clientEntity);
 
-            _ = Task.Run(async()=> await _emailSender.SendEmail(clientEntity, EventType.ClientCreation));
+            await _emailSender.SendEmail(clientEntity, EventType.ClientCreation);
 
             return clientEntity.ToCreateClientResponse();   
         }

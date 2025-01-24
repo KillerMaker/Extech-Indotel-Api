@@ -13,13 +13,13 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             _connectionFactory = connectionFactory;
         }
 
-        public Task AddContractNumber(string wisproId, string contractNumber)
+        public async Task AddContractNumber(string wisproId, string contractNumber)
         {
             var query = "UPDATE Client SET ContractNumber = @ContractNumber WHERE WisproId = @WisproId";
 
             using var connection = _connectionFactory.GetOpenConnection();
 
-            return connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
+            await connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
         }
 
         public async Task Create(Client client)

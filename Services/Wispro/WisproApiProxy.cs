@@ -42,7 +42,7 @@ namespace Exatech_Indotel_API.Services.Wispro
 
             var createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult);
 
-            var createdClient = await GetClient(createResult?.Data?.NationalIdentificationNumber, null, null);
+            var createdClient = await GetClient(client.NationalIdentificationNumber, null, null);
 
             return createdClient;
         }
@@ -59,7 +59,7 @@ namespace Exatech_Indotel_API.Services.Wispro
                 { "email_eq", email }
             };
 
-            var queryString = string.Join("&", dictionary
+            var queryString ="?"+ string.Join("&", dictionary
                 .Where(x => x.Value is not null)
                 .Select(x => $"{x.Key}={x.Value}"));
             
@@ -89,7 +89,7 @@ namespace Exatech_Indotel_API.Services.Wispro
 
         public async Task<IEnumerable<WisproContract>> GetContracsByDateRange(DateTime startDate, DateTime endDate)
         {
-            var queryString = $"?created_at_before={endDate.ToString("yyyy-MM-ddT00:00:00Z")}&created_at_after={startDate.ToString("yyyy-MM-ddT00:00:00Z")}";
+            var queryString = $"?created_at_before={endDate.ToString("yyyy-MM-ddT23:59:59Z")}&created_at_after={startDate.ToString("yyyy-MM-ddT00:00:00Z")}";
 
             var response =  await _contractsHttpClient.GetAsync(queryString);
 

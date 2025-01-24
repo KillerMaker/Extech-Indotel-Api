@@ -11,6 +11,7 @@ using System.Text.Json;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
 
 namespace Exatech_Indotel_API.Services.Email
 {
@@ -33,9 +34,10 @@ namespace Exatech_Indotel_API.Services.Email
             await _eventProcessorClient.StartProcessingAsync(stoppingToken);
         }
 
-        private async Task ProcessErrorHandler(ProcessErrorEventArgs args)
+        private Task ProcessErrorHandler(ProcessErrorEventArgs args)
         {
             Console.WriteLine(args.Exception.Message);
+            return Task.CompletedTask;
         }
         private async Task ProcessEventHandler(ProcessEventArgs eventArgs)
         {

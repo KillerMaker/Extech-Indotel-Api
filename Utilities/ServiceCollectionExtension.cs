@@ -108,7 +108,7 @@ namespace Exatech_Indotel_API
                     .AddTrigger(trigger => trigger
                         .ForJob(jobKey)
                         .WithDailyTimeIntervalSchedule(24, IntervalUnit.Hour, builder => builder
-                            .StartingDailyAt(new TimeOfDay(0,0))));
+                            .StartingDailyAt(new TimeOfDay(23,59))));
             });
 
             services.AddQuartzHostedService(options =>

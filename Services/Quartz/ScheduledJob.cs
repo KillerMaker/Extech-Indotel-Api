@@ -29,7 +29,7 @@ namespace Exatech_Indotel_API.Services.Quartz
 
             var clients = await _clientRepository.GetClientsWithoutContract();
 
-            var contracts = await _wisproApiProxy.GetContracsByDateRange(now.AddDays(-1), now);
+            var contracts = await _wisproApiProxy.GetContracsByDateRange(now, now.AddDays(1));
 
             clients.AsParallel().ForAll(async client =>
             {
@@ -38,12 +38,12 @@ namespace Exatech_Indotel_API.Services.Quartz
                 if (contract is null)
                     return;
 
-                await _siubenApiProxy.PutContract(client.NationalIdentificationNumber,
-                    new PutContractRequest
-                    {
-                        ContractNumber = contract.PublicId.ToString(),
-                        DateCreated = now.ToString("yyyy-MM-dd")
-                    });
+                //await _siubenApiProxy.PutContract(client.NationalIdentificationNumber,
+                //    new PutContractRequest
+                //    {
+                //        ContractNumber = contract.PublicId.ToString(),
+                //        DateCreated = now.ToString("yyyy-MM-dd")
+                //    });
 
                 await _clientRepository.AddContractNumber(client.WisproId, contract.PublicId.ToString());
             });
