@@ -2,7 +2,7 @@
 using Exatech_Indotel_API.Models.User;
 using Exatech_Indotel_API.Repositories.UserRepository;
 using Exatech_Indotel_API.Services.Email;
-using Exatech_Indotel_API.Utilities;
+using Exatech_Indotel_API.Utilities.Extensions;
 
 
 namespace Exatech_Indotel_API.Services.User

@@ -1,8 +1,11 @@
 ﻿using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Services.Clients;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Exatech_Indotel_API.Controllers
 {
@@ -11,9 +14,12 @@ namespace Exatech_Indotel_API.Controllers
     public class ClientController : ControllerBase
     {
         private readonly IClientsService _clientsService; 
-        public ClientController(IClientsService clientsService)
+        private readonly IValidator<CreateClientRequest> _validator;
+
+        public ClientController(IClientsService clientsService, IValidator<CreateClientRequest>validator)
         {
             _clientsService = clientsService;
+            _validator = validator;
         }
 
         [Authorize]
@@ -29,6 +35,11 @@ namespace Exatech_Indotel_API.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> CreateClient([FromBody] CreateClientRequest request)
         {
+            var validationResult = _validator.Validate(request);
+
+            if (validationResult.IsValid is false)
+                return BadRequest(new { errors = validationResult.Errors });
+
             var response = await _clientsService.CreateClient(request);
 
             if(response is null)

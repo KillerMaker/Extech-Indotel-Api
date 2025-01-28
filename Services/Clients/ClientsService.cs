@@ -9,7 +9,7 @@ using Exatech_Indotel_API.Repositories.ClientRepository;
 using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Services.Siuben;
 using Exatech_Indotel_API.Services.Wispro;
-using Exatech_Indotel_API.Utilities;
+using Exatech_Indotel_API.Utilities.Extensions;
 using System.Text.Json;
 
 namespace Exatech_Indotel_API.Services.Clients

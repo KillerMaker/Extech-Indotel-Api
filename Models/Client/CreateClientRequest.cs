@@ -1,10 +1,10 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Exatech_Indotel_API.Models.Client
 {
     public class CreateClientRequest
     {
-
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 

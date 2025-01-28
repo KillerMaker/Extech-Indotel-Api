@@ -1,6 +1,7 @@
 ﻿using Exatech_Indotel_API.Models.User;
 using Exatech_Indotel_API.Repositories.UserRepository;
 using Exatech_Indotel_API.Utilities;
+using Exatech_Indotel_API.Utilities.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

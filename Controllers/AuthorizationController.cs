@@ -23,6 +23,9 @@ namespace Exatech_Indotel_API.Controllers
         {
             var token = await _authorizationService.Authorize(user);
 
+            if (string.IsNullOrEmpty(token))
+                return Unauthorized();
+
             return Ok(new { token });
         }
     }

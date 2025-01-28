@@ -5,6 +5,7 @@ using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Email;
 using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
 using Exatech_Indotel_API.Utilities;
+using Exatech_Indotel_API.Utilities.Extensions;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 

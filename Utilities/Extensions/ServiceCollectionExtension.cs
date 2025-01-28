@@ -17,8 +17,10 @@ using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
 using Exatech_Indotel_API.Services.User;
 using Quartz;
 using Exatech_Indotel_API.Services.Quartz;
+using FluentValidation;
+using Exatech_Indotel_API.Utilities.Validators;
 
-namespace Exatech_Indotel_API
+namespace Exatech_Indotel_API.Utilities.Extensions
 {
     public static class ServiceCollectionExtension
     {
@@ -63,10 +65,10 @@ namespace Exatech_Indotel_API
             services.AddTransient<IEmailTemplateRepository, EmailTemplateRepository>();
             services.AddTransient<IUserRepository, UserRepository>();
 
-            return services; 
+            return services;
         }
 
-        public static IServiceCollection AddServices (this IServiceCollection services)
+        public static IServiceCollection AddServices(this IServiceCollection services)
         {
             services.AddTransient<ISiubenApiProxy, SiubenApiProxy>();
             services.AddTransient<IWisproApiProxy, WisproApiProxy>();
@@ -108,13 +110,21 @@ namespace Exatech_Indotel_API
                     .AddTrigger(trigger => trigger
                         .ForJob(jobKey)
                         .WithDailyTimeIntervalSchedule(24, IntervalUnit.Hour, builder => builder
-                            .StartingDailyAt(new TimeOfDay(23,59))));
+                            .StartingDailyAt(new TimeOfDay(23, 59))));
             });
 
             services.AddQuartzHostedService(options =>
             {
                 options.WaitForJobsToComplete = true;
             });
+
+            return services;
+        }
+
+        public static IServiceCollection AddValidators(this IServiceCollection services)
+        {
+            services.AddValidatorsFromAssemblyContaining<CreateClientValidator>();
+            services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
 
             return services;
         }

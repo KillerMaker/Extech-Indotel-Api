@@ -6,7 +6,7 @@ using Exatech_Indotel_API.Models.Wispro;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Exatech_Indotel_API.Utilities
+namespace Exatech_Indotel_API.Utilities.Extensions
 {
     public static class ExtensionMethods
     {
@@ -27,7 +27,7 @@ namespace Exatech_Indotel_API.Utilities
                 .Replace("$$NationalIdentificationNumber$$", client.NationalIdentificationNumber)
                 .Replace("$$City$$", client.City ?? string.Empty)
                 .Replace("$$State$$", client.State ?? string.Empty)
-                .Replace("$$PublicId$$",client.PublicId.ToString());
+                .Replace("$$PublicId$$", client.PublicId.ToString());
         }
         public static Client ToClient(this CreateClientRequest client, string wisproId, string userId, int publicId) =>
             new Client
@@ -56,7 +56,7 @@ namespace Exatech_Indotel_API.Utilities
                 Street = client.Street,
                 Number = client.Number,
                 City = client.City,
-                Phone =  client.Phone,
+                Phone = client.Phone,
                 PhoneMobile = client.PhoneMobile,
                 State = client.State,
                 NationalIdentificationNumber = client.NationalIdentificationNumber
