@@ -40,6 +40,8 @@ namespace Exatech_Indotel_API.Services.Siuben
 
         public async Task<GetBeneficiaryResponse?> GetContract(string documentNumber)
         {
+            documentNumber = documentNumber.Replace("-", string.Empty);
+
             await Authorize();
 
             var response = await _httpClient.GetAsync($"/api/Data/get/{documentNumber}");
@@ -57,6 +59,8 @@ namespace Exatech_Indotel_API.Services.Siuben
         public async Task PutContract(string documentNumber, PutBeneficiaryRequest request)
         {
             await Authorize();
+
+            documentNumber = documentNumber.Replace("-", string.Empty);
 
             var response = await _httpClient.PutAsJsonAsync($"/api/Data/update/{documentNumber}", request);
 
