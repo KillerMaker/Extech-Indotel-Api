@@ -15,5 +15,8 @@ namespace Exatech_Indotel_API.Models.Clients
 
         [JsonPropertyName("contractNumber")]
         public string? ContractNumber { get; set; } = null;
+
+        [JsonPropertyName("pobertyLevel")]
+        public int PobertyLevel { get; set; }
     }
 }

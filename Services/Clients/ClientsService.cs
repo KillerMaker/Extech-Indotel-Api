@@ -48,7 +48,8 @@ namespace Exatech_Indotel_API.Services.Clients
                 ClientId = wisproTask.Result?.Id ?? null,
                 ContractNumber = siubenTask.Result?.ContractNumber ?? null,
                 ExistsInWispro = !string.IsNullOrEmpty(wisproTask.Result?.Id),
-                ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null
+                ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null,
+                PobertyLevel = siubenTask.Result?.PobertyLevel ?? 0
             };
         }
 
