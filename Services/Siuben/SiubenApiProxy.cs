@@ -38,7 +38,7 @@ namespace Exatech_Indotel_API.Services.Siuben
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token.Token}");
         }
 
-        public async Task<GetContractResponse?> GetContract(string documentNumber)
+        public async Task<GetBeneficiaryResponse?> GetContract(string documentNumber)
         {
             await Authorize();
 
@@ -50,11 +50,11 @@ namespace Exatech_Indotel_API.Services.Siuben
             if (!response.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Siuben API: /api/Data/get/ failed with code: {response.StatusCode}");
 
-            return await response.Content.ReadFromJsonAsync<GetContractResponse>() ??
+            return await response.Content.ReadFromJsonAsync<GetBeneficiaryResponse>() ??
                 throw new ArgumentNullException();
         }
 
-        public async Task PutContract(string documentNumber, PutContractRequest request)
+        public async Task PutContract(string documentNumber, PutBeneficiaryRequest request)
         {
             await Authorize();
 

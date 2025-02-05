@@ -38,12 +38,12 @@ namespace Exatech_Indotel_API.Services.Quartz
                 if (contract is null)
                     return;
 
-                //await _siubenApiProxy.PutContract(client.NationalIdentificationNumber,
-                //    new PutContractRequest
-                //    {
-                //        ContractNumber = contract.PublicId.ToString(),
-                //        DateCreated = now.ToString("yyyy-MM-dd")
-                //    });
+                await _siubenApiProxy.PutContract(client.NationalIdentificationNumber,
+                    new PutBeneficiaryRequest
+                    {
+                        ContractNumber = contract.PublicId.ToString(),
+                        DateCreated = now.ToString("yyyy-MM-dd")
+                    });
 
                 await _clientRepository.AddContractNumber(client.WisproId, contract.PublicId.ToString());
             });
