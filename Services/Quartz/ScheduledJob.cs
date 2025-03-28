@@ -10,18 +10,15 @@ namespace Exatech_Indotel_API.Services.Quartz
     public class ScheduledJob : IJob
     {
         private readonly IWisproApiProxy _wisproApiProxy;
-        private readonly ISiubenApiProxy _siubenApiProxy;
         private readonly IEmailSenderService _emailSender;
         private readonly IClientRepository _clientRepository;
 
-        public ScheduledJob(IWisproApiProxy wisproApiProxy, ISiubenApiProxy siubenApiProxy, IEmailSenderService emailSenderService, IClientRepository clientRepository)
+        public ScheduledJob(IWisproApiProxy wisproApiProxy, IEmailSenderService emailSenderService, IClientRepository clientRepository)
         {
             _wisproApiProxy = wisproApiProxy;
-            _siubenApiProxy = siubenApiProxy;
             _emailSender = emailSenderService;
             _clientRepository = clientRepository;
         }
-
 
         public async Task Execute(IJobExecutionContext context)
         {
@@ -37,13 +34,6 @@ namespace Exatech_Indotel_API.Services.Quartz
 
                 if (contract is null)
                     return;
-
-                await _siubenApiProxy.PutContract(client.NationalIdentificationNumber,
-                    new PutBeneficiaryRequest
-                    {
-                        ContractNumber = contract.PublicId.ToString(),
-                        DateCreated = now.ToString("yyyy-MM-dd")
-                    });
 
                 await _clientRepository.AddContractNumber(client.WisproId, contract.PublicId.ToString());
             });

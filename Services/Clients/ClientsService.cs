@@ -38,7 +38,7 @@ namespace Exatech_Indotel_API.Services.Clients
 
         public async Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email)
         {
-            var wisproTask = _wisproApiProxy.GetClient(documentNumber, phoneNumber, email);
+            var wisproTask = _wisproApiProxy.GetClient(documentNumber);
 
             var siubenTask = _siubenApiProxy.GetContract(documentNumber);
 
