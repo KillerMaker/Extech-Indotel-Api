@@ -11,6 +11,7 @@ namespace Exatech_Indotel_API.Services.Siuben
         private readonly AppOptions _appOptions;
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _cache;
+
         public SiubenApiProxy(IOptions<AppOptions> options, IHttpClientFactory httpClientFactory, IMemoryCache cache)
         {
             _appOptions = options.Value;
@@ -64,7 +65,12 @@ namespace Exatech_Indotel_API.Services.Siuben
                 response = await _httpClient.GetAsync($"/api/Data/get/{documentNumber}");
 
                 if (response.StatusCode.Equals(HttpStatusCode.Unauthorized))
-                    refreshToken = !refreshToken;
+                {
+                    refreshToken = true;
+                    continue;
+                } 
+
+                break;
             }
             while (refreshToken);
 
@@ -93,7 +99,12 @@ namespace Exatech_Indotel_API.Services.Siuben
                 response = await _httpClient.PutAsJsonAsync($"/api/Data/update/{documentNumber}", request);
 
                 if (response.StatusCode.Equals(HttpStatusCode.Unauthorized))
-                    refreshToken = !refreshToken;
+                {
+                    refreshToken = true;
+                    continue;
+                }
+                    
+                break;
             }
             while(refreshToken);
 
