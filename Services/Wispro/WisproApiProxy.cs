@@ -4,7 +4,6 @@ using Exatech_Indotel_API.Utilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Exatech_Indotel_API.Services.Wispro
 {
@@ -33,6 +32,8 @@ namespace Exatech_Indotel_API.Services.Wispro
 
         public async Task<WisproClient?> CreateClient(WisproClient client)
         {
+            client.NationalIdentificationNumber = client.NationalIdentificationNumber?.Replace("-","");
+
             var createResponse = await _clientsHttpClient.PostAsJsonAsync($"?name = {client.Name}", client);
 
             if (!createResponse.IsSuccessStatusCode)
@@ -49,7 +50,9 @@ namespace Exatech_Indotel_API.Services.Wispro
 
         public async Task<WisproClient?> GetClient(string? documentNumber, string? phoneNumber, string? email)
         {
-            if(_cache.Get<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
+            documentNumber = documentNumber?.Replace("-", "");
+
+            if (_cache.Get<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
                 return client;
 
             var dictionary = new Dictionary<string, string?>
