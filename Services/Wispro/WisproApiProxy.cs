@@ -1,5 +1,4 @@
 ﻿using Exatech_Indotel_API.Models.Wispro;
-using Exatech_Indotel_API.Repositories.ClientRepository;
 using Exatech_Indotel_API.Utilities;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -43,33 +42,22 @@ namespace Exatech_Indotel_API.Services.Wispro
 
             var createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult);
 
-            var createdClient = await GetClient(client.NationalIdentificationNumber, null, null);
+            var createdClient = await GetClient(client.NationalIdentificationNumber);
 
             return createdClient;
         }
 
-        public async Task<WisproClient?> GetClient(string? documentNumber, string? phoneNumber, string? email)
+        public async Task<WisproClient?> GetClient(string? documentNumber)
         {
             documentNumber = documentNumber?.Replace("-", "");
 
             if (_cache.Get<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
                 return client;
-
-            var dictionary = new Dictionary<string, string?>
-            {
-                { "national_identification_number_eq", documentNumber },
-                { "phone_number_cont", phoneNumber },
-                { "email_eq", email }
-            };
-
-            var queryString ="?"+ string.Join("&", dictionary
-                .Where(x => x.Value is not null)
-                .Select(x => $"{x.Key}={x.Value}"));
             
-            var response = await _clientsHttpClient.GetAsync(queryString);
+            var response = await _clientsHttpClient.GetAsync($"?national_identification_number_eq={documentNumber}");
 
             if (!response.IsSuccessStatusCode)
-                throw new AggregateException($"Call To Wispro API: /api/clients?{queryString} failed with code: {response.StatusCode}");
+                throw new AggregateException($"Call To Wispro API: /api/clients?national_identification_number_eq={documentNumber} failed with code: {response.StatusCode}");
 
             string json = await response.Content.ReadAsStringAsync();
 
@@ -79,10 +67,7 @@ namespace Exatech_Indotel_API.Services.Wispro
             {
                 var result = obj.Data.First();
 
-                _cache.Set($"wispro-{documentNumber}", result, new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(12)
-                });
+                _cache.Set($"wispro-{documentNumber}", result, TimeSpan.FromMinutes(15));
 
                 return result;
             }

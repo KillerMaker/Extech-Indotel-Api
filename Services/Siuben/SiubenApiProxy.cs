@@ -10,24 +10,33 @@ namespace Exatech_Indotel_API.Services.Siuben
     {
         private readonly AppOptions _appOptions;
         private readonly HttpClient _httpClient;
-        public SiubenApiProxy(IOptions<AppOptions> options, IHttpClientFactory httpClientFactory)
+        private readonly IMemoryCache _cache;
+
+        public SiubenApiProxy(IOptions<AppOptions> options, IHttpClientFactory httpClientFactory, IMemoryCache cache)
         {
             _appOptions = options.Value;
             _httpClient = httpClientFactory.CreateClient();
 
             _httpClient.BaseAddress = new Uri(_appOptions.SiubenUrl);
+            _cache = cache;
         }
 
-        private async Task Authorize()
+        private async Task Authorize(bool refresh = false)
         {
- 
+            if(!refresh && _cache.Get<string>("jwt") is string cachedToken)
+            {
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {cachedToken}");
+
+                return;
+            }
+
             var login = new SiubenLoginRequest
             {
                 Username = _appOptions.SiubenUsername,
                 Password = _appOptions.SiubenPassword
             };
 
-            _httpClient.Timeout = TimeSpan.FromSeconds(100);
             var response = await _httpClient.PostAsJsonAsync("/api/auth/login", login);
 
             response.EnsureSuccessStatusCode();
@@ -35,16 +44,35 @@ namespace Exatech_Indotel_API.Services.Siuben
             var token = await response.Content.ReadFromJsonAsync<SiubenLoginResponse>() ??
                 throw new UnauthorizedAccessException();
 
+            _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token.Token}");
+
+            _cache.Set("jwt", token.Token, TimeSpan.FromMinutes(45));
         }
 
         public async Task<GetBeneficiaryResponse?> GetContract(string documentNumber)
         {
             documentNumber = documentNumber.Replace("-", string.Empty);
 
-            await Authorize();
+            HttpResponseMessage response;
 
-            var response = await _httpClient.GetAsync($"/api/Data/get/{documentNumber}");
+            bool refreshToken = false;
+
+            do
+            {
+                await Authorize(refreshToken);
+
+                response = await _httpClient.GetAsync($"/api/Data/get/{documentNumber}");
+
+                if (response.StatusCode.Equals(HttpStatusCode.Unauthorized))
+                {
+                    refreshToken = true;
+                    continue;
+                } 
+
+                break;
+            }
+            while (refreshToken);
 
             if (response.StatusCode.Equals(HttpStatusCode.NotFound))
                 return null;
@@ -58,11 +86,27 @@ namespace Exatech_Indotel_API.Services.Siuben
 
         public async Task PutContract(string documentNumber, PutBeneficiaryRequest request)
         {
-            await Authorize();
-
             documentNumber = documentNumber.Replace("-", string.Empty);
 
-            var response = await _httpClient.PutAsJsonAsync($"/api/Data/update/{documentNumber}", request);
+            HttpResponseMessage response;
+
+            bool refreshToken = false;
+
+            do
+            {
+                await Authorize(refreshToken);
+
+                response = await _httpClient.PutAsJsonAsync($"/api/Data/update/{documentNumber}", request);
+
+                if (response.StatusCode.Equals(HttpStatusCode.Unauthorized))
+                {
+                    refreshToken = true;
+                    continue;
+                }
+                    
+                break;
+            }
+            while(refreshToken);
 
             response.EnsureSuccessStatusCode();
 
