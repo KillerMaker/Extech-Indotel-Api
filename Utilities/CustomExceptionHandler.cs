@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
+using Exatech_Indotel_API.Services.Siuben;
 using System.Net;
 using System.Text.Json;
 
@@ -19,7 +20,10 @@ namespace Exatech_Indotel_API.Utilities
             _logger.LogError(exception, message);
 
             httpContext.Response.ContentType = "application/json";
-            httpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            httpContext.Response.StatusCode = exception is SiubenApiException siuben
+                ? (int)(siuben.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound
+                    ? siuben.StatusCode : HttpStatusCode.BadGateway)
+                : (int)HttpStatusCode.InternalServerError;
 
             var response = new
             {

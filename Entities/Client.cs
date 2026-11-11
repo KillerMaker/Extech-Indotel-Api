@@ -1,4 +1,4 @@
-﻿namespace Exatech_Indotel_API.Entities
+namespace Exatech_Indotel_API.Entities
 {
     public class Client
     {
@@ -14,6 +14,10 @@
 
         public required int PobertyLevel {  get; set; }
 
+        public bool SiubenActivated { get; set; }
+
+        public bool SiubenDisabled { get; set; }
+
         public string? ContractNumber { get; set; } = null;
 
         public string? Email { get; set; } = string.Empty;
@@ -27,6 +31,8 @@
         public string? PhoneMobile { get; set; } = string.Empty;
 
         public required string NationalIdentificationNumber { get; set; }
+
+        public string? Locality { get; set; }
 
         public string? City { get; set; } = string.Empty;
 

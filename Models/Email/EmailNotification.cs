@@ -5,7 +5,7 @@
         public required string To { get; set; }
         public required string Subject { get; set; }
         public required string Body { get; set; }
-        public required EventType EventType { get; set; }
-        public IEnumerable<string>? CC { get; set; }
+        public required string System { get; set; }
+        public IEnumerable<string> CC { get; set; } = Array.Empty<string>();
     }
 }

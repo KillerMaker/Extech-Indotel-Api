@@ -1,4 +1,3 @@
-﻿using Azure;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Models.User;
@@ -43,6 +42,7 @@ namespace Exatech_Indotel_API.Utilities.Extensions
                 Phone = client.Phone,
                 PhoneMobile = client.PhoneMobile,
                 NationalIdentificationNumber = client.NationalIdentificationNumber,
+                Locality = client.Locality,
                 City = client.City,
                 State = client.State,
                 PublicId = publicId
@@ -74,6 +74,7 @@ namespace Exatech_Indotel_API.Utilities.Extensions
                 Number = client.Number,
                 Phone = client.Phone ?? string.Empty,
                 PhoneMobile = client.PhoneMobile ?? string.Empty,
+                Locality = client.Locality ?? string.Empty,
                 City = client.City ?? string.Empty,
                 State = client.State ?? string.Empty,
                 PobertyLevel = client.PobertyLevel

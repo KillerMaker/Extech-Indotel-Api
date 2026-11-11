@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Utilities.Factories;
 
@@ -22,6 +22,20 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             await connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
         }
 
+        public async Task MarkSiubenDisabled(string wisproId, string contractNumber)
+        {
+            const string query = "UPDATE Client SET ContractNumber = @ContractNumber, SiubenActivated = 0, SiubenDisabled = 1 WHERE WisproId = @WisproId";
+            using var connection = _connectionFactory.GetOpenConnection();
+            await connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
+        }
+
+        public async Task MarkSiubenActivated(string wisproId, string contractNumber)
+        {
+            const string query = "UPDATE Client SET ContractNumber = @ContractNumber, SiubenActivated = 1, SiubenDisabled = 0 WHERE WisproId = @WisproId";
+            using var connection = _connectionFactory.GetOpenConnection();
+            await connection.ExecuteAsync(query, new { WisproId = wisproId, ContractNumber = contractNumber });
+        }
+
         public async Task Create(Client client)
         {
             var query = @"INSERT INTO Client (
@@ -36,6 +50,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
                             PhoneMobile,
                             NationalIdentificationNumber,
                             City,
+                            Locality,
                             State,
                             PublicId   
                         )
@@ -51,6 +66,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
                             @PhoneMobile,
                             @NationalIdentificationNumber,
                             @City,
+                            @Locality,
                             @State,
                             @PublicId)";
 
@@ -70,7 +86,7 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             return client != null;
         }
 
-        public async Task<IEnumerable<Client>> GetClientsWithoutContract()
+        public async Task<IEnumerable<Client>> GetClientsForContractSynchronization()
         {
             var query = "SELECT * FROM Client";
 
@@ -95,6 +111,16 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
             using var connection = _connectionFactory.GetOpenConnection();
 
             return await connection.QueryFirstOrDefaultAsync<Client>(query, new { WisproId = id });
+        }
+
+        public async Task<Client?> GetByDocumentNumber(string documentNumber)
+        {
+            const string query = "SELECT * FROM Client WHERE REPLACE(NationalIdentificationNumber, '-', '') = @DocumentNumber";
+
+            using var connection = _connectionFactory.GetOpenConnection();
+
+            return await connection.QueryFirstOrDefaultAsync<Client>(query,
+                new { DocumentNumber = documentNumber.Replace("-", string.Empty).Trim() });
         }
     }
 }

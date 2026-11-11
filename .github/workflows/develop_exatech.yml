@@ -21,7 +21,7 @@ jobs:
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '10.0.x'
 
       - name: Build with dotnet
         run: dotnet build --configuration Release
@@ -50,7 +50,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -65,4 +65,4 @@ jobs:
           app-name: 'exatech'
           slot-name: 'Production'
           package: .
-          
+

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Exatech_Indotel_API.Simulation</RootNamespace>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Simulation/**/*.cs" Exclude="Simulation/bin/**;Simulation/obj/**" />
+    <Content Include="Simulation/simulation.settings.json" Link="simulation.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <ProjectReference Include="Exatech-Indotel-API.csproj" />
+  </ItemGroup>
+</Project>

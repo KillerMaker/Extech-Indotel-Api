@@ -1,9 +1,7 @@
 ﻿using Exatech_Indotel_API.Models.User;
-using Exatech_Indotel_API.Repositories.UserRepository;
 using Exatech_Indotel_API.Services.User;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Exatech_Indotel_API.Controllers
@@ -21,7 +19,7 @@ namespace Exatech_Indotel_API.Controllers
             _validator = validator;
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPost("create")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest user)
         {

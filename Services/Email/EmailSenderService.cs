@@ -1,6 +1,5 @@
-﻿
-using Azure.Messaging.EventHubs;
-using Azure.Messaging.EventHubs.Producer;
+
+using Confluent.Kafka;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Email;
 using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
@@ -14,19 +13,21 @@ namespace Exatech_Indotel_API.Services.Email
     public class EmailSenderService : IEmailSenderService
     {
         private readonly AppOptions _appOptions;
-        private readonly EventHubProducerClient _eventproducerClient;
+        private readonly IProducer<Null, string> _producer;
+        private readonly EmailQueueOptions _queueOptions;
         private readonly IEmailTemplateRepository _emailTemplateRepository;
 
-        public EmailSenderService(IOptions<AppOptions> options, EventHubProducerClient eventHubProducerClient, IEmailTemplateRepository emailtemplateRepository)
+        public EmailSenderService(IOptions<AppOptions> options, IProducer<Null, string> producer, IOptions<EmailQueueOptions> queueOptions, IEmailTemplateRepository emailtemplateRepository)
         {
             _appOptions = options.Value;
-            _eventproducerClient = eventHubProducerClient;
+            _producer = producer;
+            _queueOptions = queueOptions.Value;
             _emailTemplateRepository = emailtemplateRepository;
         }
 
         public async Task SendEmail(Client client, EventType eventType, IEnumerable<string>? copies = null)
         {
-            await SendEmail<Client>(client, eventType, ExtensionMethods.FillTemplate, copies);
+            await SendEmail(client, eventType, ExtensionMethods.FillTemplate, copies);
         }
 
         public async Task SendEmail<T>(T data, EventType eventType, Func<EmailTemplate, T, string> fillTemplate, IEnumerable<string>? copies = null)
@@ -47,22 +48,14 @@ namespace Exatech_Indotel_API.Services.Email
                 Body = fillTemplate.Invoke(template, data),
                 Subject = emailSubject,
                 To = _appOptions.EmailReciver,
-                EventType = eventType,
-                CC = copies
+                System = _queueOptions.System,
+                CC = copies?.ToArray() ?? Array.Empty<string>()
             };
 
-            using EventDataBatch eventBatch = await _eventproducerClient.CreateBatchAsync();
-
-            EventData eventData = new EventData
+            await _producer.ProduceAsync(_queueOptions.Topic, new Message<Null, string>
             {
-                CorrelationId = Guid.NewGuid().ToString(),
-                EventBody = BinaryData.FromString(JsonSerializer.Serialize(notification)),
-                MessageId = Guid.NewGuid().ToString(),
-                ContentType = "application/json"
-            };
-
-            if (eventBatch?.TryAdd(eventData) ?? false)
-                await _eventproducerClient.SendAsync(eventBatch);
+                Value = JsonSerializer.Serialize(notification, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            });
         }
     }
 }

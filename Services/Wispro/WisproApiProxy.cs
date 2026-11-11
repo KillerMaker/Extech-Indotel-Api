@@ -1,6 +1,6 @@
 ﻿using Exatech_Indotel_API.Models.Wispro;
 using Exatech_Indotel_API.Utilities;
-using Microsoft.Extensions.Caching.Memory;
+using Exatech_Indotel_API.Services.Cache;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
@@ -11,9 +11,9 @@ namespace Exatech_Indotel_API.Services.Wispro
         private readonly AppOptions _appOptions;
         private readonly HttpClient _clientsHttpClient;
         private readonly HttpClient _contractsHttpClient;
-        private readonly IMemoryCache _cache;
+        private readonly ICacheService _cache;
 
-        public WisproApiProxy(IOptions<AppOptions>options, IHttpClientFactory httpClientFactory, IMemoryCache cache)
+        public WisproApiProxy(IOptions<AppOptions>options, IHttpClientFactory httpClientFactory, ICacheService cache)
         {
             _appOptions = options.Value;
 
@@ -51,7 +51,7 @@ namespace Exatech_Indotel_API.Services.Wispro
         {
             documentNumber = documentNumber?.Replace("-", "");
 
-            if (_cache.Get<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
+            if (await _cache.GetAsync<WisproClient>($"wispro-{documentNumber}") is WisproClient client)
                 return client;
             
             var response = await _clientsHttpClient.GetAsync($"?national_identification_number_eq={documentNumber}");
@@ -67,12 +67,38 @@ namespace Exatech_Indotel_API.Services.Wispro
             {
                 var result = obj.Data.First();
 
-                _cache.Set($"wispro-{documentNumber}", result, TimeSpan.FromMinutes(15));
+                await _cache.SetAsync($"wispro-{documentNumber}", result, TimeSpan.FromMinutes(15));
 
                 return result;
             }
                 
             return null;
+        }
+
+        public async Task<WisproContract?> GetContractForClient(string documentNumber, string clientId, string? contractNumber = null)
+        {
+            var document = Uri.EscapeDataString(documentNumber.Replace("-", string.Empty).Trim());
+            var query = $"?client_national_identification_number_eq={document}";
+            if (!string.IsNullOrWhiteSpace(contractNumber))
+                query += $"&public_id_eq={Uri.EscapeDataString(contractNumber)}";
+            using var response = await _contractsHttpClient.GetAsync(query);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<WisproGetResponse<WisproContract>>()
+                ?? throw new InvalidOperationException("Wispro returned an empty contract response.");
+            if (result.Status != 200)
+                throw new InvalidOperationException($"Wispro contract lookup failed with status {result.Status}.");
+
+            if (result.Meta is JsonElement meta && meta.TryGetProperty("pagination", out var pagination) &&
+                pagination.TryGetProperty("total_pages", out var pages) && pages.GetInt32() > 1)
+                throw new InvalidOperationException("Wispro returned multiple pages of contracts; select the contract before enabling the Siuben beneficiary.");
+
+            var contracts = result.Data?.Where(contract => contract.ClientId == clientId &&
+                (string.IsNullOrWhiteSpace(contractNumber) || contract.PublicId.ToString(System.Globalization.CultureInfo.InvariantCulture) == contractNumber)).ToArray() ?? [];
+            if (contracts.Length > 1)
+                throw new InvalidOperationException("More than one Wispro contract was found for this client; select the contract before enabling the Siuben beneficiary.");
+
+            return contracts.SingleOrDefault();
         }
 
         public async Task<IEnumerable<WisproContract>> GetContracsByDateRange(DateTime startDate, DateTime endDate)

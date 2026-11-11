@@ -19,6 +19,9 @@ namespace Exatech_Indotel_API.Models.Wispro
         [JsonPropertyName("created_at")]
         public required string CreatedAt { get; set; }
 
+        [JsonPropertyName("state")]
+        public string State { get; set; } = string.Empty;
+
         [JsonPropertyName("updated_at")]
         public string UpdatedAt { get; set; } = string.Empty;
     }

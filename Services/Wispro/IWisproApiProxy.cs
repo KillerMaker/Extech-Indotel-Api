@@ -8,6 +8,8 @@ namespace Exatech_Indotel_API.Services.Wispro
 
         Task<WisproClient?> CreateClient(WisproClient client);
 
+        Task<WisproContract?> GetContractForClient(string documentNumber, string clientId, string? contractNumber = null);
+
         Task<IEnumerable<WisproContract>>GetContracsByDateRange(DateTime startDate, DateTime endDate);
     }
 }

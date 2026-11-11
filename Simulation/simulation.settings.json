@@ -1,0 +1,36 @@
+{
+  "Siuben": {
+    "Phase1": {
+      "Localities": [
+        "Salinas",
+        "Cristobal",
+        "Batey 8",
+        "Santana",
+        "Cabeza de Toro",
+        "Quita Coraza",
+        "Fondo Negro",
+        "Canoa",
+        "Jaquimeyes",
+        "Palo Alto",
+        "Fundacion",
+        "Pescaderia",
+        "La Guazara",
+        "Polo"
+      ]
+    },
+    "Phase2": {
+      "Localities": [
+        "El Naranjo",
+        "La lista",
+        "Bombita",
+        "El Memiso",
+        "El higuito",
+        "Las Minas",
+        "Batey 7",
+        "Batey 9",
+        "Sabana Mula",
+        "El Pon"
+      ]
+    }
+  }
+}

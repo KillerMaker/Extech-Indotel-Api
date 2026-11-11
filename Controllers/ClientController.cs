@@ -1,5 +1,6 @@
-﻿using Exatech_Indotel_API.Models.Client;
+using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Services.Clients;
+using Exatech_Indotel_API.Services.Siuben;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
@@ -13,20 +14,37 @@ namespace Exatech_Indotel_API.Controllers
     [ApiController]
     public class ClientController : ControllerBase
     {
+        private readonly SiubenLocalities _localities;
         private readonly IClientsService _clientsService; 
         private readonly IValidator<CreateClientRequest> _validator;
 
-        public ClientController(IClientsService clientsService, IValidator<CreateClientRequest>validator)
+        public ClientController(IClientsService clientsService, IValidator<CreateClientRequest>validator, SiubenLocalities localities)
         {
+            _localities = localities;
             _clientsService = clientsService;
             _validator = validator;
         }
 
         [Authorize]
-        [HttpGet("check")]
-        public async Task<IActionResult> CheckClient([FromQuery] string documentNumber, [FromQuery] string? phoneNumber, [FromQuery] string? email)
+        [HttpGet]
+        public async Task<IActionResult> GetClient([FromQuery, Required, RegularExpression(@"^(?:[0-9]{11}|[0-9]{3}-[0-9]{7}-[0-9])$")] string documentNumber)
         {
-            var response = await _clientsService.CheckClient(documentNumber, phoneNumber, email);
+            var client = await _clientsService.GetByDocumentNumber(documentNumber);
+
+            if (client is null)
+                return NotFound(new { errorMessage = "Cliente no encontrado en el repositorio de clientes." });
+
+            return Ok(client);
+        }
+
+        [Authorize]
+        [HttpGet("check")]
+        public async Task<IActionResult> CheckClient([FromQuery, Required, RegularExpression(@"^(?:[0-9]{11}|[0-9]{3}-[0-9]{7}-[0-9])$")] string documentNumber, [FromQuery, Required] string locality, [FromQuery] string? phoneNumber, [FromQuery] string? email)
+        {
+            if (!_localities.IsSupported(locality))
+                return BadRequest(new { errorMessage = "Locality must be a supported Siuben locality." });
+
+            var response = await _clientsService.CheckClient(documentNumber, phoneNumber, email, locality);
 
             return Ok(response);
         }

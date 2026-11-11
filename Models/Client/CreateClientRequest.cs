@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace Exatech_Indotel_API.Models.Client
@@ -25,6 +25,9 @@ namespace Exatech_Indotel_API.Models.Client
 
         [JsonPropertyName("phoneMobile")]
         public string PhoneMobile { get; set; } = string.Empty;
+
+        [JsonPropertyName("locality")]
+        public string Locality { get; set; } = string.Empty;
 
         [JsonPropertyName("city")]
         public string City { get; set; } = string.Empty;

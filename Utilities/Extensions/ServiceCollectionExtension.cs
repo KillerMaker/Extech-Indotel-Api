@@ -1,4 +1,7 @@
-﻿
+using StackExchange.Redis;
+using Exatech_Indotel_API.Services.Cache;
+using Confluent.Kafka;
+
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Exatech_Indotel_API.Repositories.ClientRepository;
@@ -7,11 +10,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Exatech_Indotel_API.Services.Authorization;
 using Exatech_Indotel_API.Services.Clients;
 using Exatech_Indotel_API.Services.Siuben;
+using Exatech_Indotel_API.Services.Siuben.Phase1;
+using Exatech_Indotel_API.Services.Siuben.Phase2;
 using Exatech_Indotel_API.Services.Wispro;
-using Azure.Messaging.EventHubs;
-using Azure.Messaging.EventHubs.Producer;
-using Azure.Storage.Blobs;
-using Azure.Messaging.EventHubs.Consumer;
 using Exatech_Indotel_API.Services.Email;
 using Exatech_Indotel_API.Repositories.EmailTemplateRepository;
 using Exatech_Indotel_API.Services.User;
@@ -24,38 +25,45 @@ namespace Exatech_Indotel_API.Utilities.Extensions
 {
     public static class ServiceCollectionExtension
     {
-        public static IServiceCollection AddEventHubConsumer(this WebApplicationBuilder builder)
+        public static IServiceCollection AddRedisCache(this IServiceCollection services)
         {
-            string blobStorageContainerName = builder.Configuration.GetValue<string>("BlobContainerName") ?? string.Empty;
-            string blobStorageContainerConnectionString = builder.Configuration.GetValue<string>("BlobStorageConnectionString") ?? string.Empty;
-            string eventHubName = builder.Configuration.GetValue<string>("EventHubName") ?? string.Empty;
-            string eventHubConnectionString = builder.Configuration.GetValue<string>("EventHubConnectionString") ?? string.Empty;
-
-            var options = new EventProcessorClientOptions()
+            services.AddOptions<RedisOptions>().BindConfiguration("Redis")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Redis:ConnectionString is required.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.InstanceName) && !options.InstanceName.Contains('{') && !options.InstanceName.Contains('}'),
+                    "Redis:InstanceName is required and cannot contain braces.")
+                .ValidateOnStart();
+            services.AddSingleton<IConnectionMultiplexer>(provider =>
             {
-                RetryOptions = new EventHubsRetryOptions()
-                {
-                    MaximumRetries = int.Parse(Environment.GetEnvironmentVariable("MaxRetries") ?? "0"),
-                    Delay = TimeSpan.FromSeconds(int.Parse(Environment.GetEnvironmentVariable("DelayInSeconds") ?? "120")),
-                    MaximumDelay = TimeSpan.FromSeconds(int.Parse(Environment.GetEnvironmentVariable("DelayInSeconds") ?? "120"))
-                }
-            };
+                var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RedisOptions>>().Value;
+                return ConnectionMultiplexer.Connect(options.ConnectionString);
+            });
+            services.AddSingleton<IDatabase>(provider => provider.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
+            services.AddSingleton<ICacheService, RedisCacheService>();
 
-            var blobStorage = new BlobContainerClient(blobStorageContainerConnectionString, blobStorageContainerName);
-
-            builder.Services.AddTransient(x => new EventProcessorClient(blobStorage, EventHubConsumerClient.DefaultConsumerGroupName, eventHubConnectionString, eventHubName, options));
-
-            return builder.Services;
+            return services;
         }
 
-        public static IServiceCollection AddEventHubProducer(this WebApplicationBuilder builder)
+        public static IServiceCollection AddEmailProducer(this IServiceCollection services)
         {
-            string eventHubName = builder.Configuration.GetValue<string>("EventHubName") ?? string.Empty;
-            string eventHubConnectionString = builder.Configuration.GetValue<string>("EventHubConnectionString") ?? string.Empty;
+            services.AddOptions<EmailQueueOptions>()
+                .BindConfiguration(EmailQueueOptions.SectionName)
+                .Validate(options => !string.IsNullOrWhiteSpace(options.BootstrapServers), "EmailQueue:BootstrapServers is required.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.Topic), "EmailQueue:Topic is required.")
+                .Validate(options => !string.IsNullOrWhiteSpace(options.System), "EmailQueue:System is required.")
+                .ValidateOnStart();
 
-            builder.Services.AddTransient(x => new EventHubProducerClient(eventHubConnectionString, eventHubName));
+            services.AddSingleton<IProducer<Null, string>>(provider =>
+            {
+                var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailQueueOptions>>().Value;
+                return new ProducerBuilder<Null, string>(new ProducerConfig
+                {
+                    BootstrapServers = options.BootstrapServers,
+                    EnableIdempotence = true,
+                    MessageTimeoutMs = 30000
+                }).Build();
+            });
 
-            return builder.Services;
+            return services;
         }
 
         public static IServiceCollection AddRepositories(this IServiceCollection services)
@@ -70,7 +78,20 @@ namespace Exatech_Indotel_API.Utilities.Extensions
 
         public static IServiceCollection AddServices(this IServiceCollection services)
         {
-            services.AddTransient<ISiubenApiProxy, SiubenApiProxy>();
+            services.AddSingleton<SiubenLocalities>();
+            services.AddOptions<SiubenOptions>().BindConfiguration("Siuben")
+                .Validate(SiubenLocalities.IsValidConfiguration,
+                    "Each Siuben phase must configure non-empty Localities, with no blank or duplicate names across either phase.")
+                .ValidateOnStart()
+                .PostConfigure<Microsoft.Extensions.Options.IOptions<AppOptions>>((options, legacy) =>
+                {
+                    if (string.IsNullOrWhiteSpace(options.Phase1.Url)) options.Phase1.Url = legacy.Value.SiubenUrl;
+                    if (string.IsNullOrWhiteSpace(options.Phase1.Username)) options.Phase1.Username = legacy.Value.SiubenUsername;
+                    if (string.IsNullOrWhiteSpace(options.Phase1.Password)) options.Phase1.Password = legacy.Value.SiubenPassword;
+                });
+            services.AddTransient<SiubenPhase1ApiProxy>();
+            services.AddTransient<SiubenPhase2ApiProxy>();
+            services.AddTransient<ISiubenApiProxyResolver, SiubenApiProxyResolver>();
             services.AddTransient<IWisproApiProxy, WisproApiProxy>();
             services.AddTransient<IClientsService, ClientsService>();
             services.AddTransient<IAuthorizationService, AuthorizationService>();

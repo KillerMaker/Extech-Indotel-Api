@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Exatech_Indotel_API.Models.Clients
 {
@@ -17,6 +17,15 @@ namespace Exatech_Indotel_API.Models.Clients
         public string? ContractNumber { get; set; } = null;
 
         [JsonPropertyName("pobertyLevel")]
-        public int PobertyLevel { get; set; }
+        public int? PobertyLevel { get; set; }
+
+        [JsonPropertyName("siubenPhase")]
+        public int SiubenPhase { get; set; }
+
+        [JsonPropertyName("isEligible")]
+        public bool? IsEligible { get; set; }
+
+        [JsonPropertyName("reason")]
+        public string? Reason { get; set; }
     }
 }

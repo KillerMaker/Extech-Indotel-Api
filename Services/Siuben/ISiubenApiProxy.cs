@@ -1,10 +1,8 @@
-﻿using Exatech_Indotel_API.Models.Siuben;
+using Exatech_Indotel_API.Models.Siuben;
 
-namespace Exatech_Indotel_API.Services.Siuben
+namespace Exatech_Indotel_API.Services.Siuben;
+
+public interface ISiubenApiProxy
 {
-    public interface ISiubenApiProxy
-    {
-        Task<GetBeneficiaryResponse?> GetContract(string documentNumber);
-        Task PutContract(string documentNumber, PutBeneficiaryRequest request);
-    }
+    Task<SiubenLookupResult> GetContract(string documentNumber);
 }

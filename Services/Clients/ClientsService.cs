@@ -1,5 +1,3 @@
-﻿using Azure.Messaging.EventHubs;
-using Azure.Messaging.EventHubs.Producer;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Client;
 using Exatech_Indotel_API.Models.Clients;
@@ -16,45 +14,68 @@ namespace Exatech_Indotel_API.Services.Clients
 {
     public class ClientsService : IClientsService
     {
+        private readonly SiubenLocalities _localities;
         private readonly IWisproApiProxy _wisproApiProxy;
-        private readonly ISiubenApiProxy _siubenApiProxy;
+        private readonly ISiubenApiProxyResolver _siubenResolver;
         private readonly IClientRepository _clientRepository;
         private readonly IHttpContextAccessor _contextAccesor;
         private readonly IEmailSenderService _emailSender;
 
         public ClientsService(
-            ISiubenApiProxy siubenApiProxy, 
+            ISiubenApiProxyResolver siubenResolver,
             IWisproApiProxy wisproApiProxy, 
             IClientRepository clientRepository, 
             IHttpContextAccessor contextAccessor,
-            IEmailSenderService emailSenderService)
+            IEmailSenderService emailSenderService,
+            SiubenLocalities localities)
         {
+            _localities = localities;
             _wisproApiProxy = wisproApiProxy;
-            _siubenApiProxy = siubenApiProxy;
+            _siubenResolver = siubenResolver;
             _clientRepository = clientRepository;
             _contextAccesor = contextAccessor;
             _emailSender = emailSenderService;
         }
 
-        public async Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email)
+        public async Task<ClientDetailsResponse?> GetByDocumentNumber(string documentNumber)
         {
-            var wisproTask = _wisproApiProxy.GetClient(documentNumber);
+            var document = documentNumber.Replace("-", string.Empty).Trim();
+            var client = await _clientRepository.GetByDocumentNumber(document);
+            if (client is null)
+                return null;
 
-            var siubenTask = _siubenApiProxy.GetContract(documentNumber);
+            var contract = string.IsNullOrWhiteSpace(client.WisproId) ? null :
+                await _wisproApiProxy.GetContractForClient(document, client.WisproId, client.ContractNumber);
+
+            return new ClientDetailsResponse { Client = client, WisproContract = contract };
+        }
+
+        public async Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email, string locality)
+        {
+            var siuben = _siubenResolver.Resolve(locality);
+            var wisproTask = _wisproApiProxy.GetClient(documentNumber);
+            var siubenTask = siuben.GetContract(documentNumber);
 
             await Task.WhenAll(wisproTask, siubenTask);
+            var beneficiary = await siubenTask;
+            var phase = _localities.GetPhase(locality);
 
             return new CheckClientResponse {
                 ClientId = wisproTask.Result?.Id ?? null,
-                ContractNumber = siubenTask.Result?.ContractNumber ?? null,
+                ContractNumber = beneficiary.ContractNumber,
                 ExistsInWispro = !string.IsNullOrEmpty(wisproTask.Result?.Id),
-                ExistsInSiuben = siubenTask.Result?.PobertyLevel is not null,
-                PobertyLevel = siubenTask.Result?.PobertyLevel ?? 0
+                ExistsInSiuben = beneficiary.Exists,
+                PobertyLevel = phase == SiubenPhase.Phase1 ? beneficiary.PovertyLevel ?? 0 : null,
+                SiubenPhase = (int)phase,
+                IsEligible = beneficiary.IsEligible,
+                Reason = beneficiary.Reason
             };
         }
 
         public async Task<CreateClientResponse?> CreateClient(CreateClientRequest clientDto)
         {
+            clientDto.Locality = _localities.GetName(clientDto.Locality);
+
             if (await _clientRepository.Exists(clientDto.NationalIdentificationNumber))
                 return null;
 
@@ -74,7 +95,7 @@ namespace Exatech_Indotel_API.Services.Clients
 
             await _emailSender.SendEmail(clientEntity, EventType.ClientCreation);
 
-            return clientEntity.ToCreateClientResponse();   
+            return clientEntity.ToCreateClientResponse();
         }
     }
 }

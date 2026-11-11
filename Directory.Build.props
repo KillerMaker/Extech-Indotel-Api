@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Exatech-Indotel-Simulation'">
+    <BaseIntermediateOutputPath>obj/Simulation/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/Simulation/</BaseOutputPath>
+  </PropertyGroup>
+</Project>
