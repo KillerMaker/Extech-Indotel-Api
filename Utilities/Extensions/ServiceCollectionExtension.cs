@@ -35,7 +35,10 @@ namespace Exatech_Indotel_API.Utilities.Extensions
             services.AddSingleton<IConnectionMultiplexer>(provider =>
             {
                 var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<RedisOptions>>().Value;
-                return ConnectionMultiplexer.Connect(options.ConnectionString);
+                var configuration = ConfigurationOptions.Parse(options.ConnectionString);
+                if (!string.IsNullOrEmpty(options.Password))
+                    configuration.Password = options.Password;
+                return ConnectionMultiplexer.Connect(configuration);
             });
             services.AddSingleton<IDatabase>(provider => provider.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
             services.AddSingleton<ICacheService, RedisCacheService>();
@@ -58,6 +61,10 @@ namespace Exatech_Indotel_API.Utilities.Extensions
                 return new ProducerBuilder<Null, string>(new ProducerConfig
                 {
                     BootstrapServers = options.BootstrapServers,
+                    SecurityProtocol = options.SecurityProtocol,
+                    SaslMechanism = options.SaslMechanism,
+                    SaslUsername = string.IsNullOrEmpty(options.SaslUsername) ? null : options.SaslUsername,
+                    SaslPassword = string.IsNullOrEmpty(options.SaslPassword) ? null : options.SaslPassword,
                     EnableIdempotence = true,
                     MessageTimeoutMs = 30000
                 }).Build();

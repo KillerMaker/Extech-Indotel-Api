@@ -1,0 +1,154 @@
+name: API build and DigitalOcean deployment
+
+on:
+  push:
+    branches: [phase2, develop]
+  pull_request:
+    branches: [phase2, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment to deploy
+        type: choice
+        options: [Staging, Production]
+        default: Staging
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indotel-api-${{ inputs.environment || 'Staging' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+    env:
+      ENVIRONMENT_NAME: ${{ inputs.environment || 'Staging' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Tests/SiubenChecks/SiubenChecks.csproj
+      - run: dotnet run --project Tests/SiubenChecks/SiubenChecks.csproj --configuration Release --no-restore
+      - name: Check SQL Server bootstrap and application login
+        run: python3 deployment/check-sql.py
+      - name: Name the immutable release image
+        id: image
+        run: |
+          repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          target=$(printf '%s' "$ENVIRONMENT_NAME" | tr '[:upper:]' '[:lower:]')
+          echo "ref=ghcr.io/$repository:$GITHUB_SHA-$target" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          load: true
+          tags: ${{ steps.image.outputs.ref }}
+          cache-from: type=gha,scope=indotel-api
+          cache-to: type=gha,mode=max,scope=indotel-api
+      - name: Check production container startup
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          trap 'docker rm -f indotel-api-check >/dev/null 2>&1 || true' EXIT
+          docker run -d --name indotel-api-check -p 127.0.0.1:18080:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Production -e DOTNET_ENVIRONMENT=Production \
+            -e SecretKey=ci-container-startup-key-at-least-32-bytes "$IMAGE_REF"
+          for attempt in $(seq 1 24); do
+            if curl --fail --silent http://127.0.0.1:18080/health; then exit 0; fi
+            sleep 5
+          done
+          docker logs indotel-api-check
+          exit 1
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'Staging' }}
+    env:
+      ASPNETCORE_ENVIRONMENT: ${{ vars.ASPNETCORE_ENVIRONMENT }}
+      DOTNET_ENVIRONMENT: ${{ vars.DOTNET_ENVIRONMENT }}
+      API_ALLOWED_HOSTS: ${{ vars.API_ALLOWED_HOSTS }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+      SQL_APP_PASSWORD: ${{ secrets.SQL_APP_PASSWORD }}
+      SQL_CONNECTION_STRING: ${{ secrets.SQL_CONNECTION_STRING }}
+      WISPRO_CLIENTS_URL: ${{ vars.WISPRO_CLIENTS_URL }}
+      WISPRO_CONTRACTS_URL: ${{ vars.WISPRO_CONTRACTS_URL }}
+      WISPRO_API_KEY: ${{ secrets.WISPRO_API_KEY }}
+      SIUBEN_PHASE1_URL: ${{ vars.SIUBEN_PHASE1_URL }}
+      SIUBEN_PHASE1_USERNAME: ${{ secrets.SIUBEN_PHASE1_USERNAME }}
+      SIUBEN_PHASE1_PASSWORD: ${{ secrets.SIUBEN_PHASE1_PASSWORD }}
+      SIUBEN_PHASE1_LOCALITIES: ${{ vars.SIUBEN_PHASE1_LOCALITIES }}
+      SIUBEN_PHASE1_PROVIDER: ${{ vars.SIUBEN_PHASE1_PROVIDER }}
+      SIUBEN_PHASE1_DISABLED_CONTRACT_REASON: ${{ vars.SIUBEN_PHASE1_DISABLED_CONTRACT_REASON }}
+      SIUBEN_PHASE1_DISABLED_CONTRACT_OTHER_REASON: ${{ vars.SIUBEN_PHASE1_DISABLED_CONTRACT_OTHER_REASON }}
+      SIUBEN_PHASE2_URL: ${{ vars.SIUBEN_PHASE2_URL }}
+      SIUBEN_PHASE2_USERNAME: ${{ secrets.SIUBEN_PHASE2_USERNAME }}
+      SIUBEN_PHASE2_PASSWORD: ${{ secrets.SIUBEN_PHASE2_PASSWORD }}
+      SIUBEN_PHASE2_LOCALITIES: ${{ vars.SIUBEN_PHASE2_LOCALITIES }}
+      SIUBEN_PHASE2_PROVIDER: ${{ vars.SIUBEN_PHASE2_PROVIDER }}
+      SIUBEN_PHASE2_DISABLED_CONTRACT_REASON: ${{ vars.SIUBEN_PHASE2_DISABLED_CONTRACT_REASON }}
+      SIUBEN_PHASE2_DISABLED_CONTRACT_OTHER_REASON: ${{ vars.SIUBEN_PHASE2_DISABLED_CONTRACT_OTHER_REASON }}
+      REDIS_CONNECTION_STRING: ${{ secrets.REDIS_CONNECTION_STRING }}
+      REDIS_INSTANCE_NAME: ${{ vars.REDIS_INSTANCE_NAME }}
+      EMAIL_KAFKA_BOOTSTRAP_SERVERS: ${{ vars.EMAIL_KAFKA_BOOTSTRAP_SERVERS }}
+      EMAIL_KAFKA_TOPIC: ${{ vars.EMAIL_KAFKA_TOPIC }}
+      EMAIL_SYSTEM: ${{ vars.EMAIL_SYSTEM }}
+      EMAIL_KAFKA_SECURITY_PROTOCOL: ${{ vars.EMAIL_KAFKA_SECURITY_PROTOCOL }}
+      EMAIL_KAFKA_SASL_MECHANISM: ${{ vars.EMAIL_KAFKA_SASL_MECHANISM }}
+      EMAIL_KAFKA_SASL_USERNAME: ${{ secrets.EMAIL_KAFKA_SASL_USERNAME }}
+      EMAIL_KAFKA_SASL_PASSWORD: ${{ secrets.EMAIL_KAFKA_SASL_PASSWORD }}
+      EMAIL_RECEIVER: ${{ vars.EMAIL_RECEIVER }}
+      CLIENT_CREATION_TEMPLATE: ${{ vars.CLIENT_CREATION_TEMPLATE }}
+      CLIENT_UPDATE_REQUEST_TEMPLATE: ${{ vars.CLIENT_UPDATE_REQUEST_TEMPLATE }}
+      USER_CREATION_TEMPLATE: ${{ vars.USER_CREATION_TEMPLATE }}
+      CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+      SWAGGER_ENABLED: ${{ vars.SWAGGER_ENABLED }}
+      LOG_LEVEL_DEFAULT: ${{ vars.LOG_LEVEL_DEFAULT }}
+      LOG_LEVEL_ASPNETCORE: ${{ vars.LOG_LEVEL_ASPNETCORE }}
+      SIUBEN_URL: ${{ vars.SIUBEN_URL }}
+      SIUBEN_USERNAME: ${{ secrets.SIUBEN_USERNAME }}
+      SIUBEN_PASSWORD: ${{ secrets.SIUBEN_PASSWORD }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+      TZ: ${{ vars.TZ }}
+      DOCKER_SUBNET: ${{ vars.DOCKER_SUBNET }}
+      DROPLET_HOST: ${{ vars.DROPLET_HOST }}
+      DROPLET_USER: ${{ vars.DROPLET_USER }}
+      DROPLET_SSH_PORT: ${{ vars.DROPLET_SSH_PORT }}
+      DROPLET_SSH_KNOWN_HOSTS: ${{ vars.DROPLET_SSH_KNOWN_HOSTS }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      APP_PORT: ${{ vars.APP_PORT }}
+      PUBLIC_DOMAIN: ${{ vars.PUBLIC_DOMAIN }}
+      PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN }}
+      DOCKER_NETWORK: ${{ vars.DOCKER_NETWORK }}
+      COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
+      GHCR_USERNAME: ${{ vars.GHCR_USERNAME || github.repository_owner }}
+      DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      IMAGE_REF: ${{ needs.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Render runtime settings
+        run: python deployment/configure.py --output "$RUNNER_TEMP/indotel-api"
+      - name: Deploy over SSH
+        run: python deployment/ship.py --bundle "$RUNNER_TEMP/indotel-api" --files docker-compose.prod.yml:docker-compose.yml Caddyfile:Caddyfile deployment/deploy.sh:deploy.sh

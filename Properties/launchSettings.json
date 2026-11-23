@@ -5,22 +5,10 @@
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "SiubenUrl": "https://servicios.siuben.gob.do:2043",
-        "WisproClientsUrl": "https://www.cloud.wispro.co/api/v1/clients",
-        "WisproContractsUrl": "https://www.cloud.wispro.co/api/v1/contracts",
-        "EventHubName": "email-notifications",
-        "ClientCreationTemplate": "ClientCreated",
-        "ClientUpdateRequestTemplate": "ClientUpdated",
-        "EmailSender": "internet@exatech.com.do",
-        "EmailReciver": "internet@exatech.com.do",
-        "EmailHost": "mail.exclusivehosting.net",
-        "EmailPort": "465",
-        "UserCreationTemplate": "UserCreated"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7297;http://localhost:5166"
-
     }
   }
 }

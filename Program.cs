@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Exatech_Indotel_API.Utilities;
 using Exatech_Indotel_API.Utilities.Extensions;
 using Exatech_Indotel_API.Utilities.Factories;
@@ -13,10 +14,24 @@ namespace Exatech_Indotel_API
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(
-                    policy => policy
-                        .AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
+                    policy =>
+                    {
+                        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+                        if (builder.Environment.IsDevelopment() && origins.Length == 0)
+                            policy.AllowAnyOrigin();
+                        else
+                            policy.WithOrigins(origins);
+
+                        policy.AllowAnyMethod().AllowAnyHeader();
+                    });
+            });
+
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                var networks = builder.Configuration.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [];
+                foreach (var network in networks)
+                    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
             });
 
             builder.AddJwtAuthentication();
@@ -41,13 +56,19 @@ namespace Exatech_Indotel_API
 
             var app = builder.Build();
 
+            app.UseForwardedHeaders();
             app.UseExceptionHandler("/Error");
             app.UseCors();
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            if (builder.Configuration.GetValue("Swagger:Enabled", builder.Environment.IsDevelopment()))
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
             app.UseHttpsRedirection();
-            app.MapControllers();
+            app.UseAuthentication();
             app.UseAuthorization();
+            app.MapControllers();
+            app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
             app.Run();
         }

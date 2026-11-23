@@ -1,0 +1,335 @@
+[
+  {
+    "name": "ASPNETCORE_ENVIRONMENT",
+    "source": "ASPNETCORE_ENVIRONMENT",
+    "kind": "variable",
+    "required": false,
+    "default": "Production"
+  },
+  {
+    "name": "DOTNET_ENVIRONMENT",
+    "source": "DOTNET_ENVIRONMENT",
+    "kind": "variable",
+    "required": false,
+    "default": "Production"
+  },
+  {
+    "name": "AllowedHosts",
+    "source": "API_ALLOWED_HOSTS",
+    "kind": "variable",
+    "required": false,
+    "default": "*"
+  },
+  {
+    "name": "SecretKey",
+    "source": "JWT_SECRET_KEY",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "DatabaseConnectionString",
+    "source": "SQL_CONNECTION_STRING",
+    "kind": "secret",
+    "required": false
+  },
+  {
+    "name": "WisproClientsUrl",
+    "source": "WISPRO_CLIENTS_URL",
+    "kind": "variable",
+    "required": false,
+    "default": "https://www.cloud.wispro.co/api/v1/clients"
+  },
+  {
+    "name": "WisproContractsUrl",
+    "source": "WISPRO_CONTRACTS_URL",
+    "kind": "variable",
+    "required": false,
+    "default": "https://www.cloud.wispro.co/api/v1/contracts"
+  },
+  {
+    "name": "WisproApiKey",
+    "source": "WISPRO_API_KEY",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase1__Url",
+    "source": "SIUBEN_PHASE1_URL",
+    "kind": "variable",
+    "required": false,
+    "default": "https://servicios.siuben.gob.do:2043"
+  },
+  {
+    "name": "Siuben__Phase1__Username",
+    "source": "SIUBEN_PHASE1_USERNAME",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase1__Password",
+    "source": "SIUBEN_PHASE1_PASSWORD",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase1__Localities",
+    "source": "SIUBEN_PHASE1_LOCALITIES",
+    "kind": "variable",
+    "required": false,
+    "default": [
+      "Salinas",
+      "Cristobal",
+      "Batey 8",
+      "Santana",
+      "Cabeza de Toro",
+      "Quita Coraza",
+      "Fondo Negro",
+      "Canoa",
+      "Jaquimeyes",
+      "Palo Alto",
+      "Fundacion",
+      "Pescaderia",
+      "La Guazara",
+      "Polo"
+    ],
+    "array": true
+  },
+  {
+    "name": "Siuben__Phase1__Provider",
+    "source": "SIUBEN_PHASE1_PROVIDER",
+    "kind": "variable",
+    "required": false,
+    "default": "Exatech"
+  },
+  {
+    "name": "Siuben__Phase1__DisabledContractReason",
+    "source": "SIUBEN_PHASE1_DISABLED_CONTRACT_REASON",
+    "kind": "variable",
+    "required": false,
+    "default": "Cancelación"
+  },
+  {
+    "name": "Siuben__Phase1__DisabledContractOtherReason",
+    "source": "SIUBEN_PHASE1_DISABLED_CONTRACT_OTHER_REASON",
+    "kind": "variable",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "Siuben__Phase2__Url",
+    "source": "SIUBEN_PHASE2_URL",
+    "kind": "variable",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase2__Username",
+    "source": "SIUBEN_PHASE2_USERNAME",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase2__Password",
+    "source": "SIUBEN_PHASE2_PASSWORD",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "Siuben__Phase2__Localities",
+    "source": "SIUBEN_PHASE2_LOCALITIES",
+    "kind": "variable",
+    "required": false,
+    "default": [
+      "El Naranjo",
+      "La lista",
+      "Bombita",
+      "El Memiso",
+      "El higuito",
+      "Las Minas",
+      "Batey 7",
+      "Batey 9",
+      "Sabana Mula",
+      "El Pon"
+    ],
+    "array": true
+  },
+  {
+    "name": "Siuben__Phase2__Provider",
+    "source": "SIUBEN_PHASE2_PROVIDER",
+    "kind": "variable",
+    "required": false,
+    "default": "Exatech"
+  },
+  {
+    "name": "Siuben__Phase2__DisabledContractReason",
+    "source": "SIUBEN_PHASE2_DISABLED_CONTRACT_REASON",
+    "kind": "variable",
+    "required": false,
+    "default": "Cancelación"
+  },
+  {
+    "name": "Siuben__Phase2__DisabledContractOtherReason",
+    "source": "SIUBEN_PHASE2_DISABLED_CONTRACT_OTHER_REASON",
+    "kind": "variable",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "Redis__ConnectionString",
+    "source": "REDIS_CONNECTION_STRING",
+    "kind": "secret",
+    "required": false,
+    "default": "redis:6379,abortConnect=false"
+  },
+  {
+    "name": "Redis__InstanceName",
+    "source": "REDIS_INSTANCE_NAME",
+    "kind": "variable",
+    "required": false,
+    "default": "exatech-indotel-api:"
+  },
+  {
+    "name": "EmailQueue__BootstrapServers",
+    "source": "EMAIL_KAFKA_BOOTSTRAP_SERVERS",
+    "kind": "variable",
+    "required": true
+  },
+  {
+    "name": "EmailQueue__Topic",
+    "source": "EMAIL_KAFKA_TOPIC",
+    "kind": "variable",
+    "required": false,
+    "default": "email.requests"
+  },
+  {
+    "name": "EmailQueue__System",
+    "source": "EMAIL_SYSTEM",
+    "kind": "variable",
+    "required": false,
+    "default": "exatech-indotel-api"
+  },
+  {
+    "name": "EmailQueue__SecurityProtocol",
+    "source": "EMAIL_KAFKA_SECURITY_PROTOCOL",
+    "kind": "variable",
+    "required": false,
+    "default": "Plaintext"
+  },
+  {
+    "name": "EmailQueue__SaslMechanism",
+    "source": "EMAIL_KAFKA_SASL_MECHANISM",
+    "kind": "variable",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "EmailQueue__SaslUsername",
+    "source": "EMAIL_KAFKA_SASL_USERNAME",
+    "kind": "secret",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "EmailQueue__SaslPassword",
+    "source": "EMAIL_KAFKA_SASL_PASSWORD",
+    "kind": "secret",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "EmailReciver",
+    "source": "EMAIL_RECEIVER",
+    "kind": "variable",
+    "required": false,
+    "default": "internet@exatech.com.do"
+  },
+  {
+    "name": "ClientCreationTemplate",
+    "source": "CLIENT_CREATION_TEMPLATE",
+    "kind": "variable",
+    "required": false,
+    "default": "ClientCreated"
+  },
+  {
+    "name": "ClientUpdateRequestTemplate",
+    "source": "CLIENT_UPDATE_REQUEST_TEMPLATE",
+    "kind": "variable",
+    "required": false,
+    "default": "ClientUpdated"
+  },
+  {
+    "name": "UserCreationTemplate",
+    "source": "USER_CREATION_TEMPLATE",
+    "kind": "variable",
+    "required": false,
+    "default": "UserCreated"
+  },
+  {
+    "name": "Cors__AllowedOrigins",
+    "source": "CORS_ALLOWED_ORIGINS",
+    "kind": "variable",
+    "required": false,
+    "array": true
+  },
+  {
+    "name": "Swagger__Enabled",
+    "source": "SWAGGER_ENABLED",
+    "kind": "variable",
+    "required": false,
+    "default": "false"
+  },
+  {
+    "name": "Logging__LogLevel__Default",
+    "source": "LOG_LEVEL_DEFAULT",
+    "kind": "variable",
+    "required": false,
+    "default": "Information"
+  },
+  {
+    "name": "Logging__LogLevel__Microsoft.AspNetCore",
+    "source": "LOG_LEVEL_ASPNETCORE",
+    "kind": "variable",
+    "required": false,
+    "default": "Warning"
+  },
+  {
+    "name": "SiubenUrl",
+    "source": "SIUBEN_URL",
+    "kind": "variable",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "SiubenUsername",
+    "source": "SIUBEN_USERNAME",
+    "kind": "secret",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "SiubenPassword",
+    "source": "SIUBEN_PASSWORD",
+    "kind": "secret",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "Redis__Password",
+    "source": "REDIS_PASSWORD",
+    "kind": "secret",
+    "required": true
+  },
+  {
+    "name": "TZ",
+    "source": "TZ",
+    "kind": "variable",
+    "required": false,
+    "default": "America/Santo_Domingo"
+  },
+  {
+    "name": "ReverseProxy__KnownNetworks__0",
+    "source": "DOCKER_SUBNET",
+    "kind": "variable",
+    "required": false,
+    "default": "172.29.20.0/24"
+  }
+]

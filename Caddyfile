@@ -1,0 +1,9 @@
+{$PUBLIC_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy indotel-api:8080
+}
+
+{$PORTAL_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy indotel-portal:8080
+}

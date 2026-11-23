@@ -363,3 +363,16 @@ MigrationBackup/
 FodyWeavers.xsd
 # Local integrated simulation logs and process IDs
 .simulation/
+
+# Deployment credentials and build output
+.env
+.env.*
+!.env.example
+publish/
+
+!.env.production.example
+runtime.compose.json
+.deployment-values*.json
+
+# Generated SQL bootstrap contains the application password.
+sql-init.sql
