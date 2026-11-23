@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Utilities.Factories;
 
@@ -7,57 +7,42 @@ namespace Exatech_Indotel_API.Repositories.UserRepository
     internal class UserRepository : IUserRepository
     {
         private readonly IDatabaseConnectionFactory _connectionFactory;
+        private const string SelectUser = @"SELECT
+                            AU.UserId,
+                            AU.Email,
+                            AU.Password,
+                            AU.Name,
+                            AU.Phone,
+                            AU.RoleId,
+                            UR.RoleId,
+                            UR.RoleName,
+                            UR.RoleDescription
+                          FROM dbo.AppUser AU
+                          INNER JOIN dbo.UserRole UR ON AU.RoleId = UR.RoleId";
+
         public UserRepository(IDatabaseConnectionFactory connectionFactory)
         {
             _connectionFactory = connectionFactory;
         }
-        public async Task<User?> CheckUserEmailAndPassword(string email, string password)
+
+        private async Task<User?> FindUser(string predicate, object parameters)
         {
-            var query = @"SELECT
-                            UserId,
-                            Email,
-                            Password,
-                            Name,
-                            Phone,
-                            UR.RoleId,
-                            RoleName,
-                            RoleDescription
-                          FROM AppUser AU 
-                          INNER JOIN UserRole UR ON AU.RoleId = UR.RoleId
-                          WHERE AU.Email = @email AND AU.Password = @password";
-
-            var connection = _connectionFactory.GetOpenConnection();
-
-            var users = await connection.QueryAsync<User, Role, User>(query, (user, role) => { 
-                user.Role = role;
-                return user;
-            }, 
-            new { Email = email, Password = password },
-            splitOn: "RoleId");
-
+            using var connection = _connectionFactory.GetOpenConnection();
+            var users = await connection.QueryAsync<User, Role, User>(SelectUser + predicate,
+                (user, role) => { user.Role = role; user.RoleId = role.RoleId; return user; },
+                parameters, splitOn: "RoleId");
             return users.FirstOrDefault();
         }
 
-        public Task CreateUser(User user)
+        public Task<User?> CheckUserEmailAndPassword(string email, string password) =>
+            FindUser(" WHERE AU.Email = @Email AND AU.Password = @Password", new { Email = email, Password = password });
+
+        public async Task CreateUser(User user)
         {
-            var query = @"INSERT INTO AppUser (
-                            Email,
-                            Password,
-                            Name,
-                            Phone,
-                            RoleId
-                          )
-                          VALUES (
-                            @Email,
-                            @Password,
-                            @Name,
-                            @Phone,
-                            @RoleId
-                          )";
-
-            var connection = _connectionFactory.GetOpenConnection();
-
-            return connection.ExecuteAsync(query, user);
+            const string query = @"INSERT INTO dbo.AppUser (Email, Password, Name, Phone, RoleId)
+                                  VALUES (@Email, @Password, @Name, @Phone, @RoleId)";
+            using var connection = _connectionFactory.GetOpenConnection();
+            await connection.ExecuteAsync(query, user);
         }
 
         public Task DeleteUser(int id)
@@ -65,44 +50,10 @@ namespace Exatech_Indotel_API.Repositories.UserRepository
             throw new NotImplementedException();
         }
 
-        public async Task<User?> GetUserByEmail(string email)
-        {
-            var query = @"SELECT
-                            Id,
-                            Email,
-                            Password,
-                            Name,
-                            Phone,
-                            RoleId
-                          FROM APP_USER AU 
-                          INNER JOIN USER_ROLE UR ON AU.RoleId = UR.Id
-                          WHERE AU.Email = @email";
+        public Task<User?> GetUserByEmail(string email) =>
+            FindUser(" WHERE AU.Email = @Email", new { Email = email });
 
-            var connection = _connectionFactory.GetOpenConnection();
-
-            var user = await connection.QueryFirstAsync<User>(query, new { Email = email });
-
-            return user;
-        }
-
-        public async Task<User?> GetUserById(int id)
-        {
-            var query = @"SELECT
-                            Id,
-                            Email,
-                            Password,
-                            Name,
-                            Phone,
-                            RoleId
-                          FROM APP_USER AU 
-                          INNER JOIN USER_ROLE UR ON AU.RoleId = UR.Id
-                          WHERE AU.Id = @Id";
-
-            var connection = _connectionFactory.GetOpenConnection();
-
-            var user = await connection.QueryFirstAsync<User>(query, new { Id = id });
-
-            return user;
-        }
+        public Task<User?> GetUserById(int id) =>
+            FindUser(" WHERE AU.UserId = @Id", new { Id = id });
     }
 }

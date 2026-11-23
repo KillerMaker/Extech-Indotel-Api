@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory() as directory:
     app_password = "Ci_App';$Password123!"
     (bundle / "sql-init.sql").write_text(configuration.sql_bootstrap(app_password), encoding="utf-8")
     (bundle / "runtime.json").write_text(json.dumps({"services": {
-        "sqlserver": {"environment": {"MSSQL_SA_PASSWORD": admin_password}},
+        "sqlserver": {"environment": {"MSSQL_SA_PASSWORD": admin_password}, "ports": ["127.0.0.1::1433"]},
         "sql-init": {"environment": {"SQLCMDPASSWORD": admin_password}},
     }}), encoding="utf-8")
     compose = ["docker", "compose", "--env-file", str(bundle / ".env"), "-f", str(bundle / "compose.yml"), "-f", str(bundle / "runtime.json")]
@@ -43,7 +43,14 @@ with tempfile.TemporaryDirectory() as directory:
                         "-S", "sqlserver", "-U", "indotel_api", "-d", "Indotel", "-C", "-b", "-Q",
                         "IF IS_SRVROLEMEMBER('sysadmin') <> 0 OR HAS_PERMS_BY_NAME(DB_NAME(), 'DATABASE', 'CONTROL') <> 0 THROW 50000, 'Application login has excessive privileges', 1; SELECT 1;"],
                        env=environment, check=True, timeout=60)
-        print("SQL bootstrap, repeat initialization, application login and permission checks passed.")
+        endpoint = subprocess.check_output([*compose, "port", "sqlserver", "1433"], text=True).strip()
+        port = endpoint.rsplit(":", 1)[1]
+        environment["SQL_CHECK_CONNECTION_STRING"] = (
+            f'Server=127.0.0.1,{port};Database=Indotel;User Id=indotel_api;Password="{app_password}";Encrypt=True;TrustServerCertificate=True;'
+        )
+        subprocess.run(["dotnet", "run", "--project", str(root / "Tests/SqlChecks/SqlChecks.csproj"), "--configuration", "Release"],
+                       env=environment, check=True, timeout=180)
+        print("SQL bootstrap, repeat initialization and repository integration checks passed.")
     finally:
         subprocess.run([*compose, "down", "--volumes"], check=True)
         subprocess.run(["docker", "network", "rm", network], check=True, stdout=subprocess.DEVNULL)

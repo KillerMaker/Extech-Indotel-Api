@@ -102,7 +102,7 @@ def sql_configuration():
 def sql_bootstrap(password):
     # Disable sqlcmd variable substitution with -x; quote SQL string literals here.
     literal = password.replace("'", "''")
-    return """IF DB_ID(N'Indotel') IS NULL CREATE DATABASE [Indotel];
+    bootstrap = """IF DB_ID(N'Indotel') IS NULL CREATE DATABASE [Indotel];
 GO
 IF SUSER_ID(N'indotel_api') IS NULL
     CREATE LOGIN [indotel_api] WITH PASSWORD = N'""" + literal + """', CHECK_POLICY = ON;
@@ -117,6 +117,9 @@ IF IS_ROLEMEMBER(N'db_datawriter', N'indotel_api') <> 1 ALTER ROLE [db_datawrite
 GRANT EXECUTE TO [indotel_api];
 GO
 """
+    database = Path(__file__).resolve().parent.parent / "Database"
+    scripts = [database / "Schema.sql", *sorted((database / "Migrations").glob("*.sql"))]
+    return bootstrap + "\n".join(script.read_text(encoding="utf-8-sig") + "\nGO\n" for script in scripts)
 
 
 def main():
