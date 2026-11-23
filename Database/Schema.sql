@@ -1,6 +1,13 @@
 -- Repository-compatible schema. Run in the target database with sqlcmd -b -x.
 -- Existing tables and application data are preserved; incremental upgrades follow.
 SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET NUMERIC_ROUNDABORT OFF;
 BEGIN TRANSACTION;
 GO
 IF OBJECT_ID(N'dbo.UserRole', N'U') IS NULL
