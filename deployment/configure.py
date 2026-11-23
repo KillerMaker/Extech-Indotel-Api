@@ -69,6 +69,7 @@ def deployment():
         "DOCKER_NETWORK": os.environ.get("DOCKER_NETWORK") or "exatech-indotel",
         "DOCKER_SUBNET": os.environ.get("DOCKER_SUBNET") or "172.29.20.0/24",
         "APP_PORT": os.environ.get("APP_PORT") or "8080",
+        "RECREATE_DATABASE_CONTAINER": os.environ.get("RECREATE_DATABASE_CONTAINER") or "false",
     }
     if not re.fullmatch(r"ghcr\.io/[a-z0-9_./-]+:[a-zA-Z0-9_.-]+", values["APP_IMAGE"]):
         raise ValueError("IMAGE_REF must be a tagged ghcr.io image")
@@ -78,6 +79,8 @@ def deployment():
     if not 1024 <= int(values["APP_PORT"]) <= 65535:
         raise ValueError("APP_PORT must be between 1024 and 65535")
     ipaddress.IPv4Network(values["DOCKER_SUBNET"])
+    if values["RECREATE_DATABASE_CONTAINER"] not in ["true", "false"]:
+        raise ValueError("RECREATE_DATABASE_CONTAINER must be true or false")
     return values
 
 

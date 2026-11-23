@@ -50,7 +50,18 @@ with tempfile.TemporaryDirectory() as directory:
         )
         subprocess.run(["dotnet", "run", "--project", str(root / "Tests/SqlChecks/SqlChecks.csproj"), "--configuration", "Release"],
                        env=environment, check=True, timeout=180)
-        print("SQL bootstrap, repeat initialization and repository integration checks passed.")
+        original_id = subprocess.check_output([*compose, "ps", "-q", "sqlserver"], text=True).strip()
+        subprocess.run([*compose, "up", "-d", "--no-deps", "--no-recreate", "--wait", "sqlserver"], check=True, timeout=120)
+        retained_id = subprocess.check_output([*compose, "ps", "-q", "sqlserver"], text=True).strip()
+        assert retained_id == original_id, "Normal deployment must retain the SQL container"
+        subprocess.run([*compose, "up", "-d", "--no-deps", "--force-recreate", "--wait", "--wait-timeout", "240", "sqlserver"], check=True, timeout=300)
+        replacement_id = subprocess.check_output([*compose, "ps", "-q", "sqlserver"], text=True).strip()
+        assert replacement_id != original_id, "Explicit recreation must replace the SQL container"
+        subprocess.run([*compose, "run", "--rm", "--no-deps", "-e", "SQLCMDPASSWORD", "sql-init",
+                        "-S", "sqlserver", "-U", "indotel_api", "-d", "Indotel", "-C", "-b", "-Q",
+                        "IF NOT EXISTS (SELECT 1 FROM dbo.Client WHERE NationalIdentificationNumber = N'001-1234567-0') THROW 50000, 'Client data was lost during container recreation', 1;"],
+                       env=environment, check=True, timeout=60)
+        print("SQL schema, repositories, retained container and recreation data-persistence checks passed.")
     finally:
         subprocess.run([*compose, "down", "--volumes"], check=True)
         subprocess.run(["docker", "network", "rm", network], check=True, stdout=subprocess.DEVNULL)

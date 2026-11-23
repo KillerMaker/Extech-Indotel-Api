@@ -13,6 +13,11 @@ on:
         options: [Staging, Production]
         default: Staging
         required: true
+      recreate_database_container:
+        description: Recreate SQL Server container while preserving its data volume
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: read
@@ -143,6 +148,7 @@ jobs:
       DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       IMAGE_REF: ${{ needs.build.outputs.image }}
+      RECREATE_DATABASE_CONTAINER: ${{ inputs.recreate_database_container && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
