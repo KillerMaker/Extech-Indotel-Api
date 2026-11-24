@@ -39,6 +39,8 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Express
       MSSQL_MEMORY_LIMIT_MB: "1536"
+    ports:
+      - "${SQL_BIND_ADDRESS:-127.0.0.1}:${SQL_PORT:-1433}:1433"
     volumes:
       - sql_data:/var/opt/mssql
     healthcheck:

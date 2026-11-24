@@ -13,6 +13,7 @@ def manifest():
         "DROPLET_HOST": None, "DROPLET_USER": "deploy", "DROPLET_SSH_PORT": "22",
         "DROPLET_SSH_KNOWN_HOSTS": "", "DEPLOY_PATH": "/opt/exatech-indotel/api",
         "APP_PORT": "8080", "PUBLIC_DOMAIN": None, "PORTAL_DOMAIN": None,
+        "SQL_BIND_ADDRESS": "127.0.0.1", "SQL_PORT": "1433",
         "DOCKER_NETWORK": "exatech-indotel", "COMPOSE_PROJECT_NAME": "exatech-indotel-api",
         "GHCR_USERNAME": "KillerMaker", "DROPLET_SSH_KEY": None, "GHCR_TOKEN": None,
     }

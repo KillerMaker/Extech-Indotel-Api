@@ -133,7 +133,7 @@ The API launch profile contains only the Development environment selector. For l
 
 ## Bundled SQL Server
 
-The stack runs `mcr.microsoft.com/mssql/server:2022-latest` with Express edition, a persistent `sql_data` volume, and no host port publication. Use an x86-64 droplet with enough memory for SQL Server plus the API, Redis and portal; SQL Server needs at least 2 GB available to start. The configured SQL memory limit is 1536 MB; size the host with headroom. Express has edition capacity limits; choose an appropriately licensed edition if you outgrow it.
+The stack runs `mcr.microsoft.com/mssql/server:2022-latest` with Express edition, a persistent `sql_data` volume, and a configurable TCP port binding (loopback port 1433 by default). Use an x86-64 droplet with enough memory for SQL Server plus the API, Redis and portal; SQL Server needs at least 2 GB available to start. The configured SQL memory limit is 1536 MB; size the host with headroom. Express has edition capacity limits; choose an appropriately licensed edition if you outgrow it.
 
 Add two API GitHub Environment secrets:
 
@@ -155,6 +155,27 @@ TrustServerCertificate is used for the bundled server's self-signed TLS certific
 The init service waits for SQL health, creates the database and least-privilege application login (data reader/writer and execute; no schema administration), then allows API startup. The generated `sql-init.sql` contains the login password, is uploaded with restrictive permissions, and is gitignored. SQLCMD variable substitution is disabled and SQL literals are escaped. For a new database, deployment applies Database/Schema.sql and then Database/Migrations automatically. Existing tables/data and edited templates are preserved. The schema matches the Client, AppUser, UserRole and EmailTemplate repositories. A first administrator account must be provisioned separately; no default login/password is seeded. If importing an existing database, restore it before starting the API stack and verify compatibility with this schema.
 
 Create regular SQL backups, copy them to storage outside the droplet, and test restores. A persistent volume protects data across container recreation, but is not a backup. No automatic backup schedule is included. Keep the Compose project name stable and do not remove the sql_data volume.
+
+## Remote SQL access
+
+Set these API GitHub Environment **variables** in the environment you deploy:
+
+| Variable | Value for this droplet |
+| --- | --- |
+| `SQL_BIND_ADDRESS` | `134.209.217.173` |
+| `SQL_PORT` | `1433` |
+
+Before applying this public binding, attach/configure a DigitalOcean Cloud Firewall allowing inbound **TCP 1433 only from `152.166.124.80/32`**. Keep the existing SSH/HTTP/HTTPS rules. The Compose bind address selects the droplet interface, **not** the allowed client IP; the Cloud Firewall enforces the source restriction. These variables do not create a Cloud Firewall rule. Docker-published ports can bypass ordinary UFW rules, so use the DO Cloud Firewall for this allowlist. If your public source IP changes, update that rule.
+
+Run Actions → API build and DigitalOcean deployment → Run workflow, select the configured environment, and check `recreate_database_container` **once** to apply the new port mapping to an existing SQL container. The same named `sql_data` volume is reattached; this does not clear the database. Subsequent deployments can leave the checkbox off. No Caddy or HTTP DNS routing is involved for SQL Server.
+
+In SSMS or another SQL client use server `134.209.217.173,1433`, database `Indotel`, SQL authentication, and the existing credentials. For application-level access:
+
+```text
+Server=134.209.217.173,1433;Database=Indotel;User Id=indotel_api;Password=<SQL_APP_PASSWORD>;Encrypt=True;TrustServerCertificate=True;
+```
+
+Use `sa` with `MSSQL_SA_PASSWORD` only when administrative access is needed. The bundled SQL Server currently uses a self-signed TLS certificate, hence the explicit trust setting above; use a trusted server certificate and certificate validation when provisioned. The API keeps its internal `sqlserver,1433` connection string. Reset `SQL_BIND_ADDRESS` to `127.0.0.1` and recreate the container to remove direct public access.
 
 ## Database retention during releases
 

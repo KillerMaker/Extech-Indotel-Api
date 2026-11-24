@@ -49,6 +49,8 @@ jobs:
         run: python3 LocalTest/check.py
       - name: Check SQL Server bootstrap and application login
         run: python3 deployment/check-sql.py
+      - name: Validate SQL Server port configuration
+        run: python3 deployment/check-sql-ports.py
       - name: Name the immutable release image
         id: image
         run: |
@@ -144,6 +146,8 @@ jobs:
       DROPLET_SSH_KNOWN_HOSTS: ${{ vars.DROPLET_SSH_KNOWN_HOSTS }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       APP_PORT: ${{ vars.APP_PORT }}
+      SQL_BIND_ADDRESS: ${{ vars.SQL_BIND_ADDRESS }}
+      SQL_PORT: ${{ vars.SQL_PORT }}
       PUBLIC_DOMAIN: ${{ vars.PUBLIC_DOMAIN }}
       PORTAL_DOMAIN: ${{ vars.PORTAL_DOMAIN }}
       DOCKER_NETWORK: ${{ vars.DOCKER_NETWORK }}

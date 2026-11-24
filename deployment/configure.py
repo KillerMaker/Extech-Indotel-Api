@@ -69,6 +69,8 @@ def deployment():
         "DOCKER_NETWORK": os.environ.get("DOCKER_NETWORK") or "exatech-indotel",
         "DOCKER_SUBNET": os.environ.get("DOCKER_SUBNET") or "172.29.20.0/24",
         "APP_PORT": os.environ.get("APP_PORT") or "8080",
+        "SQL_BIND_ADDRESS": os.environ.get("SQL_BIND_ADDRESS") or "127.0.0.1",
+        "SQL_PORT": os.environ.get("SQL_PORT") or "1433",
         "RECREATE_DATABASE_CONTAINER": os.environ.get("RECREATE_DATABASE_CONTAINER") or "false",
     }
     if not re.fullmatch(r"ghcr\.io/[a-z0-9_./-]+:[a-zA-Z0-9_.-]+", values["APP_IMAGE"]):
@@ -78,6 +80,11 @@ def deployment():
             raise ValueError(name + " contains unsupported characters")
     if not 1024 <= int(values["APP_PORT"]) <= 65535:
         raise ValueError("APP_PORT must be between 1024 and 65535")
+    ipaddress.IPv4Address(values["SQL_BIND_ADDRESS"])
+    if not values["SQL_PORT"].isascii() or not values["SQL_PORT"].isdecimal() or not 1024 <= int(values["SQL_PORT"]) <= 65535:
+        raise ValueError("SQL_PORT must be between 1024 and 65535")
+    if int(values["SQL_PORT"]) == int(values["APP_PORT"]):
+        raise ValueError("SQL_PORT must differ from APP_PORT")
     ipaddress.IPv4Network(values["DOCKER_SUBNET"])
     if values["RECREATE_DATABASE_CONTAINER"] not in ["true", "false"]:
         raise ValueError("RECREATE_DATABASE_CONTAINER must be true or false")

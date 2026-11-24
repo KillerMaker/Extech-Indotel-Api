@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory() as directory:
     network = "indotel-sql-check-" + bundle.name.lower().replace("_", "-")
     (bundle / ".env").write_text(
         "APP_IMAGE=ghcr.io/killermaker/check:unused\nPUBLIC_DOMAIN=api.example.com\n"
-        "PORTAL_DOMAIN=portal.example.com\nCOMPOSE_PROJECT_NAME=" + network + "\nDOCKER_NETWORK=" + network + "\n",
+        "PORTAL_DOMAIN=portal.example.com\nSQL_BIND_ADDRESS=127.0.0.1\nSQL_PORT=0\nCOMPOSE_PROJECT_NAME=" + network + "\nDOCKER_NETWORK=" + network + "\n",
         encoding="utf-8",
     )
     # Disposable test credentials, deliberately including SQL and Compose metacharacters.
@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory() as directory:
     app_password = "Ci_App';$Password123!"
     (bundle / "sql-init.sql").write_text(configuration.sql_bootstrap(app_password), encoding="utf-8")
     (bundle / "runtime.json").write_text(json.dumps({"services": {
-        "sqlserver": {"environment": {"MSSQL_SA_PASSWORD": admin_password}, "ports": ["127.0.0.1::1433"]},
+        "sqlserver": {"environment": {"MSSQL_SA_PASSWORD": admin_password}},
         "sql-init": {"environment": {"SQLCMDPASSWORD": admin_password}},
     }}), encoding="utf-8")
     compose = ["docker", "compose", "--env-file", str(bundle / ".env"), "-f", str(bundle / "compose.yml"), "-f", str(bundle / "runtime.json")]
