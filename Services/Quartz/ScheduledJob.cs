@@ -35,7 +35,12 @@ public class ScheduledJob(
                 var contract = await wispro.GetContractForClient(client.NationalIdentificationNumber, client.WisproId, client.ContractNumber);
 
                 if (contract is null)
-                    continue; 
+                {
+                    if (isPhase2 && !string.IsNullOrWhiteSpace(client.WisproId) && !string.IsNullOrWhiteSpace(client.ContractNumber))
+                        await DisableBeneficiary(client, client.ContractNumber);
+
+                    continue;
+                }
 
                 var contractNumber = contract.PublicId.ToString(CultureInfo.InvariantCulture);
 

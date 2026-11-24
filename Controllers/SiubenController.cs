@@ -39,17 +39,17 @@ public class SiubenController(
         if (!localities.IsSupported(client.Locality) || localities.GetPhase(client.Locality!) != SiubenPhase.Phase2)
             return BadRequest(new { message = "Esta operación requiere una localidad de fase 2 registrada en el cliente." });
 
-        var contract = details.WisproContract!;
-        var number = contract.PublicId.ToString(CultureInfo.InvariantCulture);
-        if (contract.PublicId <= 0)
+        var contract = details.WisproContract;
+        var number = details.ContractDeleted ? client.ContractNumber! : contract!.PublicId.ToString(CultureInfo.InvariantCulture);
+        if (contract is not null && contract.PublicId <= 0)
             return BadRequest(new { message = "El contrato de Wispro no tiene un número válido." });
 
         var proxy = (SiubenPhase2ApiProxy)resolver.Resolve(client.Locality!);
-        var enabled = string.Equals(contract.State, "enabled", StringComparison.OrdinalIgnoreCase);
+        var enabled = contract is not null && string.Equals(contract.State, "enabled", StringComparison.OrdinalIgnoreCase);
         SiubenPhase2Response response;
         if (enabled)
         {
-            if (!DateTimeOffset.TryParse(contract.CreatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date))
+            if (!DateTimeOffset.TryParse(contract!.CreatedAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date))
                 return BadRequest(new { message = "El contrato de Wispro no tiene una fecha válida." });
             if (!SiubenPhoneNumber.IsValid(client.PhoneMobile, client.Phone))
                 return BadRequest(new { message = "El cliente no tiene un teléfono válido registrado." });

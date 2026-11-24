@@ -52,7 +52,8 @@ namespace Exatech_Indotel_API
             builder.Services.AddServices();
             builder.Services.AddValidators();
             builder.Services.AddEmailProducer();
-            builder.Services.AddQuartzScheduledJob();
+            if (builder.Configuration.GetValue("ScheduledJob:Enabled", true))
+                builder.Services.AddQuartzScheduledJob();
 
             var app = builder.Build();
 

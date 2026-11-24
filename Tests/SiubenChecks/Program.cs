@@ -137,11 +137,47 @@ await Throws<ValidationException>(() => second.DisableBeneficiary(new() { Docume
 factory.Enqueue(HttpStatusCode.OK, """{"razon":"Deshabilitado"}""");
 await second.DisableBeneficiary(new() { DocumentNumber = "00100118793", CancellationReason = "Otro", OtherCancellationReason = "Mudanza" });
 Check(factory.Requests[^1].Path == "/api/data_fase2/DeshabilitarBeneficiado" && factory.Requests[^1].Body!.Contains("Mudanza"), "disable route and payload");
+foreach (var reason in new[] { "Cancelación", "Falta de pago", "Error de inclusión" })
+{
+    foreach (var other in new string?[] { null, "", "Stale description" })
+    {
+        factory.Enqueue(HttpStatusCode.OK, """{"razon":"Deshabilitado"}""");
+        await second.DisableBeneficiary(new() { DocumentNumber = "00100118793", CancellationReason = reason, OtherCancellationReason = other });
+        using var cancellationJson = JsonDocument.Parse(factory.Requests[^1].Body!);
+        Check(!cancellationJson.RootElement.TryGetProperty("otroMotivoCancelacion", out _), "non-Otro cancellation omits optional field entirely");
+        Check(cancellationJson.RootElement.GetProperty("motivoCancelacion").GetString() == reason, "cancellation reason preserved");
+    }
+}
 factory.Enqueue(HttpStatusCode.NotFound, """{}""");
 Check(!(await first.GetContract("00100118793")).Exists, "phase 1 not found preserved");
 factory.Enqueue(HttpStatusCode.OK, """{}""");
 await first.PutContract("001-0011879-3", new() { ContractNumber = "1", DateCreated = "2026-11-03" });
 Check(factory.Requests[^1].Path == "/api/Data/update/00100118793" && factory.Requests[^1].Body!.Contains("noContrato"), "phase 1 update preserved");
+
+foreach (var baseUrl in new[] { "https://siuben.test/INDOTELAPI", "https://siuben.test/INDOTELAPI/" })
+{
+    using var prefixCache = new FakeCache();
+    var prefixFactory = new FakeFactory();
+    var prefixProxy = new SiubenPhase2ApiProxy(Options.Create(new SiubenOptions
+    {
+        Phase2 = new() { Url = baseUrl, Username = "test", Password = "test" }
+    }), prefixFactory, prefixCache);
+    prefixFactory.Enqueue(HttpStatusCode.OK, """{"token":"prefix-token"}""");
+    prefixFactory.Enqueue(HttpStatusCode.OK, """{"razon":"Elegible"}""");
+    await prefixProxy.GetContract("00100118793");
+    Check(prefixFactory.Requests[0].Path == "/INDOTELAPI/api/auth/login", "virtual directory preserved for login");
+    Check(prefixFactory.Requests[1].Path == "/INDOTELAPI/api/data_fase2/get/00100118793", "virtual directory preserved for lookup");
+    prefixFactory.Enqueue(HttpStatusCode.OK, """{"razon":"Habilitado"}""");
+    await prefixProxy.EnableBeneficiary(new()
+    {
+        DocumentNumber = "00100118793", PhoneNumber = "8095551234", Provider = "Exatech",
+        ContractNumber = "1", ContractDate = DateTimeOffset.Parse("2026-09-14T00:00:00Z")
+    });
+    Check(prefixFactory.Requests[^1].Path == "/INDOTELAPI/api/data_fase2/HabilitarBeneficiado", "virtual directory preserved for enable");
+    prefixFactory.Enqueue(HttpStatusCode.OK, """{"razon":"Deshabilitado"}""");
+    await prefixProxy.DisableBeneficiary(new() { DocumentNumber = "00100118793", CancellationReason = "Cancelación" });
+    Check(prefixFactory.Requests[^1].Path == "/INDOTELAPI/api/data_fase2/DeshabilitarBeneficiado", "virtual directory preserved for disable");
+}
 
 var services = new ServiceCollection();
 services.AddSingleton<IConfiguration>(configuration);
@@ -196,6 +232,10 @@ CreateClientRequest NewClient(string locality) => new()
     Name = "Test", Email = "test@example.com", Locality = locality,
     NationalIdentificationNumber = "001-0011879-3", PhoneMobile = "+1 (809) 555-1234", PobertyLevel = 2
 };
+var detailsRequest = JsonSerializer.Deserialize<CreateClientRequest>("""{"details":"Referencia del hogar\nSegunda línea"}""")!;
+using (var detailsJson = JsonDocument.Parse(JsonSerializer.Serialize(detailsRequest.ToWisproClient())))
+    Check(detailsJson.RootElement.GetProperty("details").GetString() == "Referencia del hogar\nSegunda línea", "client details preserved from API JSON to Wispro JSON");
+Check(NewClient("Bombita").ToWisproClient().Details == string.Empty, "client details remain optional for existing callers");
 WisproContract TestContract() => new()
 {
     Id = "wispro-contract", PublicId = 987, ClientId = "wispro-client", PlanId = "plan",
@@ -364,18 +404,24 @@ contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([TestContract()]));
 Check((await contractProxy.GetContractForClient("001-0011879-3", "wispro-client"))?.PublicId == 987, "Wispro contract lookup returns actual contract");
 Check(contractFactory.Requests[^1].Query.Contains("client_national_identification_number_eq=00100118793"), "Wispro lookup uses documented client document filter");
 contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([TestContract()]));
-Check(await contractProxy.GetContractForClient("00100118793", "other-client") is null, "Wispro verifies contract belongs to created client");
+await Throws<InvalidOperationException>(() => contractProxy.GetContractForClient("00100118793", "other-client"), "mismatched client response cannot confirm deletion");
 contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([TestContract(), TestContract()]));
 await Throws<InvalidOperationException>(() => contractProxy.GetContractForClient("00100118793", "wispro-client"), "ambiguous contracts rejected");
 contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([], 401));
 await Throws<InvalidOperationException>(() => contractProxy.GetContractForClient("00100118793", "wispro-client"), "Wispro envelope error is not treated as missing contract");
 contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([disabledContract]));
 var fetchedDisabled = await contractProxy.GetContractForClient("00100118793", "wispro-client", "987");
-Check(fetchedDisabled?.State == "disabled" && contractFactory.Requests[^1].Query.Contains("public_id_eq=987"),
-    "Wispro lookup deserializes contract state and filters exact stored contract");
-contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([disabledContract]));
-Check(await contractProxy.GetContractForClient("00100118793", "wispro-client", "999") is null,
-    "Wispro lookup rejects a different contract even if the upstream ignores the filter");
+Check(fetchedDisabled?.State == "disabled" && !contractFactory.Requests[^1].Query.Contains("public_id_eq"),
+    "Wispro lookup checks all client contracts before deciding a stored contract was deleted");
+contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([TestContract()]));
+Check((await contractProxy.GetContractForClient("00100118793", "wispro-client", "999"))?.PublicId == 987,
+    "sole replacement contract prevents treating the client as without a contract");
+contractFactory.Enqueue(HttpStatusCode.OK, ContractResponse([]));
+Check(await contractProxy.GetContractForClient("00100118793", "wispro-client", "987") is null, "successful empty lookup confirms missing contract");
+contractFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":null}""");
+await Throws<InvalidOperationException>(() => contractProxy.GetContractForClient("00100118793", "wispro-client"), "null response data cannot confirm deletion");
+contractFactory.Enqueue(HttpStatusCode.ServiceUnavailable, "{}");
+await Throws<HttpRequestException>(() => contractProxy.GetContractForClient("00100118793", "wispro-client"), "Wispro outage cannot confirm deletion");
 var tokenClock = new TestClock();
 using var expiringCache = new FakeCache(tokenClock);
 var expiryFactory = new FakeFactory();
@@ -481,6 +527,7 @@ var manual = new SiubenController(new FixedResolver(first, second, localities), 
 SynchronizeBeneficiaryRequest SyncRequest() => new() { DocumentNumber = "00100118793", CancellationReason = "Cancelación" };
 var beforeManualGuard = factory.Requests.Count;
 manualWispro.Contract = null;
+manualClient.ContractNumber = null;
 var missingDetails = await manualService.GetByDocumentNumber("001-0011879-3");
 Check(missingDetails is { WisproContract: null, CanSynchronize: false } && missingDetails.Client == manualClient,
     "lookup preserves client details but blocks clients without Wispro contracts");
@@ -491,6 +538,7 @@ Check(await manual.Synchronize(SyncRequest(), manualService, settings) is Confli
     "synchronization rejects alerted Wispro contracts");
 Check(factory.Requests.Count == beforeManualGuard && manualRepository.ActivationUpdates == 0 && manualRepository.DeactivationUpdates == 0,
     "blocked synchronization makes no Siuben call or local state change");
+manualClient.ContractNumber = "987";
 manualWispro.Contract = TestContract();
 manualClient.Locality = "Salinas";
 Check(await manual.Synchronize(SyncRequest(), manualService, settings) is BadRequestObjectResult,
@@ -537,6 +585,34 @@ var successfulManualUpdates = manualRepository.DeactivationUpdates;
 factory.Enqueue(HttpStatusCode.InternalServerError, "{}");
 await Throws<SiubenApiException>(() => manual.Synchronize(SyncRequest(), manualService, settings), "synchronization propagates Siuben errors");
 Check(manualRepository.DeactivationUpdates == successfulManualUpdates, "failed synchronization does not persist success");
+manualWispro.Contract = null;
+Check((await manualService.GetByDocumentNumber("00100118793")) is { ContractDeleted: true, CanSynchronize: true },
+    "previously linked contract absent from Wispro allows cancellation");
+factory.Enqueue(HttpStatusCode.OK, """{"razon":"Deshabilitado por contrato eliminado"}""");
+Check(await manual.Synchronize(SyncRequest(), manualService, settings) is OkObjectResult && manualClient.SiubenDisabled && !manualClient.SiubenActivated,
+    "manual synchronization disables beneficiary for deleted contract");
+Check(manualClient.ContractNumber == "987", "deleted contract number retained for history");
+var afterDeletedManual = factory.Requests.Count;
+Check((await manualService.GetByDocumentNumber("00100118793")) is { ContractDeleted: true, AlreadySynchronized: true, CanSynchronize: false },
+    "deleted contract with cancelled beneficiary is already synchronized");
+Check(await manual.Synchronize(SyncRequest(), manualService, settings) is ConflictObjectResult && factory.Requests.Count == afterDeletedManual,
+    "deleted contract is not cancelled twice manually");
+var deletedRepo = new FakeClients();
+var deletedClient = NewClient("Bombita").ToClient("wispro-client", "1", 123);
+deletedClient.ContractNumber = "987"; deletedClient.SiubenActivated = true;
+await deletedRepo.Create(deletedClient);
+var deletedJob = Job(new FakeWispro(), deletedRepo);
+factory.Enqueue(HttpStatusCode.InternalServerError, "{}");
+await deletedJob.Execute(null!);
+Check(deletedRepo.DeactivationUpdates == 0 && deletedClient.SiubenActivated, "failed cancellation for deletion remains pending");
+factory.Enqueue(HttpStatusCode.OK, """{"razon":"Deshabilitado"}""");
+await deletedJob.Execute(null!);
+Check(deletedRepo.DeactivationUpdates == 1 && deletedClient.SiubenDisabled, "job disables deleted contract on retry");
+var afterDeletedJob = factory.Requests.Count;
+await deletedJob.Execute(null!);
+Check(factory.Requests.Count == afterDeletedJob && deletedRepo.DeactivationUpdates == 1, "job skips already cancelled deleted contracts");
+await Job(new FakeWispro(), phase1Repo).Execute(null!);
+Check(factory.Requests.Count == afterDeletedJob, "deleted phase 1 contract does not call phase 2 cancellation");
 Check(factory.Pending == 0, "all mocked calls consumed");
 Console.WriteLine($"Passed {count} Siuben checks.");
 

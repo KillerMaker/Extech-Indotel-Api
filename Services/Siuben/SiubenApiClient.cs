@@ -24,8 +24,8 @@ public abstract class SiubenApiClient
         _options = options;
         _cache = cache;
         _httpClient = factory.CreateClient();
-        _httpClient.BaseAddress = url;
-        _tokenCacheKey = $"siuben:{phase}:{url}:{options.Username}:jwt";
+        _httpClient.BaseAddress = new Uri(url.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/");
+        _tokenCacheKey = $"siuben:{phase}:{_httpClient.BaseAddress}:{options.Username}:jwt";
     }
 
     private Task<string> GetToken(string? rejectedToken = null) =>
@@ -36,7 +36,7 @@ public abstract class SiubenApiClient
     {
         // Keep login shorter than the Redis refresh lock's 30-second lease.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        using var response = await _httpClient.PostAsJsonAsync("/api/auth/login", new SiubenLoginRequest
+        using var response = await _httpClient.PostAsJsonAsync("api/auth/login", new SiubenLoginRequest
         {
             Username = _options.Username,
             Password = _options.Password
@@ -60,7 +60,7 @@ public abstract class SiubenApiClient
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var token = await GetToken(rejectedToken);
-            using var request = new HttpRequestMessage(method, path);
+            using var request = new HttpRequestMessage(method, path.TrimStart('/'));
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             if (body is not null) request.Content = JsonContent.Create(body, body.GetType());
             var response = await _httpClient.SendAsync(request);

@@ -79,8 +79,6 @@ namespace Exatech_Indotel_API.Services.Wispro
         {
             var document = Uri.EscapeDataString(documentNumber.Replace("-", string.Empty).Trim());
             var query = $"?client_national_identification_number_eq={document}";
-            if (!string.IsNullOrWhiteSpace(contractNumber))
-                query += $"&public_id_eq={Uri.EscapeDataString(contractNumber)}";
             using var response = await _contractsHttpClient.GetAsync(query);
             response.EnsureSuccessStatusCode();
 
@@ -93,11 +91,15 @@ namespace Exatech_Indotel_API.Services.Wispro
                 pagination.TryGetProperty("total_pages", out var pages) && pages.GetInt32() > 1)
                 throw new InvalidOperationException("Wispro returned multiple pages of contracts; select the contract before enabling the Siuben beneficiary.");
 
-            var contracts = result.Data?.Where(contract => contract.ClientId == clientId &&
-                (string.IsNullOrWhiteSpace(contractNumber) || contract.PublicId.ToString(System.Globalization.CultureInfo.InvariantCulture) == contractNumber)).ToArray() ?? [];
+            var returned = result.Data?.ToArray()
+                ?? throw new InvalidOperationException("Wispro returned no contract data array; contract deletion cannot be confirmed.");
+            var contracts = returned.Where(contract => contract.ClientId == clientId).ToArray();
+            if (returned.Length > 0 && contracts.Length == 0)
+                throw new InvalidOperationException("Wispro returned contracts for a different client; contract deletion cannot be confirmed.");
             if (contracts.Length > 1)
                 throw new InvalidOperationException("More than one Wispro contract was found for this client; select the contract before enabling the Siuben beneficiary.");
 
+            // A sole replacement contract takes precedence over a deleted stored contract.
             return contracts.SingleOrDefault();
         }
 

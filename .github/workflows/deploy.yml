@@ -43,6 +43,10 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore Tests/SiubenChecks/SiubenChecks.csproj
       - run: dotnet run --project Tests/SiubenChecks/SiubenChecks.csproj --configuration Release --no-restore
+      - name: Check legacy migration preflight
+        run: dotnet run --project Database/LegacyMigration --configuration Release -- --self-test
+      - name: Validate local integration configuration
+        run: python3 LocalTest/check.py
       - name: Check SQL Server bootstrap and application login
         run: python3 deployment/check-sql.py
       - name: Name the immutable release image

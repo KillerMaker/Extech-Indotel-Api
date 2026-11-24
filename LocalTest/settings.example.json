@@ -1,0 +1,18 @@
+{
+  "WisproClientsUrl": "https://www.cloud.wispro.co/api/v1/clients",
+  "WisproContractsUrl": "https://www.cloud.wispro.co/api/v1/contracts",
+  "WisproApiKey": "",
+  "SiubenPhase2Url": "https://testindotelapi.siuben.gob.do/INDOTELAPI",
+  "SiubenPhase2Username": "",
+  "SiubenPhase2Password": "",
+  "ApiPort": 5288,
+  "DatabasePort": 11433,
+  "KafkaPort": 12992,
+  "LocalAdminEmail": "localtest@example.test",
+  "LocalAdminPassword": "",
+  "SqlAdminPassword": "",
+  "SqlAppPassword": "",
+  "RedisPassword": "",
+  "JwtSecret": "",
+  "ScheduledJobEnabled": false
+}

@@ -13,6 +13,9 @@ namespace Exatech_Indotel_API.Models.Wispro
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 
+        [JsonPropertyName("details")]
+        public string Details { get; set; } = string.Empty;
+
         [JsonPropertyName("email")]
         public string? Email { get; set; } = string.Empty;
 

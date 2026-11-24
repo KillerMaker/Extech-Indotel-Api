@@ -376,3 +376,5 @@ runtime.compose.json
 
 # Generated SQL bootstrap contains the application password.
 sql-init.sql
+LocalTest/settings.local.json
+LocalTest/.runtime/

@@ -52,6 +52,7 @@ namespace Exatech_Indotel_API.Utilities.Extensions
             new WisproClient
             {
                 Name = client.Name,
+                Details = client.Details,
                 Email = client.Email,
                 Street = client.Street,
                 Number = client.Number,

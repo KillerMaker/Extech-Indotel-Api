@@ -38,9 +38,15 @@ public class SiubenPhase2ApiProxy : SiubenApiClient, ISiubenApiProxy
 
     public async Task<SiubenPhase2Response> DisableBeneficiary(DisableBeneficiaryRequest request)
     {
-        Validator.ValidateObject(request, new ValidationContext(request), validateAllProperties: true);
+        var payload = new DisableBeneficiaryRequest
+        {
+            DocumentNumber = request.DocumentNumber,
+            CancellationReason = request.CancellationReason,
+            OtherCancellationReason = request.CancellationReason == "Otro" ? request.OtherCancellationReason : null
+        };
+        Validator.ValidateObject(payload, new ValidationContext(payload), validateAllProperties: true);
 
-        using var response = await Send(HttpMethod.Put, "/api/data_fase2/DeshabilitarBeneficiado", request);
+        using var response = await Send(HttpMethod.Put, "/api/data_fase2/DeshabilitarBeneficiado", payload);
 
         await EnsureSuccess(response);
 

@@ -35,3 +35,4 @@ deployment/
 tmp/
 .simulation/
 publish/
+LocalTest/

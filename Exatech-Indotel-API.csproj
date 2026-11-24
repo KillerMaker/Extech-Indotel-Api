@@ -11,6 +11,8 @@
     <DockerfileContext>.</DockerfileContext>
   </PropertyGroup>
   <ItemGroup>
+    <Content Remove="LocalTest/**" />
+    <None Remove="LocalTest/**" />
     <Content Remove="deployment/**;tmp/**;.simulation/**;publish/**" />
     <None Remove="deployment/**;tmp/**;.simulation/**;publish/**" />
     <Compile Remove="Simulation/**/*.cs" />
@@ -19,6 +21,9 @@
     <Compile Remove="Tests/**/*.cs" />
     <Content Remove="Tests/**" />
     <None Remove="Tests/**" />
+    <Compile Remove="Database/LegacyMigration/**/*.cs" />
+    <Content Remove="Database/LegacyMigration/**" />
+    <None Remove="Database/LegacyMigration/**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.6.1" />

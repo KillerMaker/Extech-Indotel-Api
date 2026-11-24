@@ -15,6 +15,7 @@ public class DisableBeneficiaryRequest : IValidatableObject
 
     [StringLength(100)]
     [JsonPropertyName("otroMotivoCancelacion")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? OtherCancellationReason { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

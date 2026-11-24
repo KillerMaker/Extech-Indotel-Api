@@ -21,6 +21,10 @@ No default portal account is created. Provision the first account through an adm
 
 Create/select the target database as a SQL administrator, execute Schema.sql with sqlcmd -b -x, then execute the incremental migration files in order. The -x option preserves the $$...$$ email template tokens by disabling sqlcmd variable substitution. Supply authentication through SQLCMDPASSWORD or your normal secure connection method. Point SQL_CONNECTION_STRING to the initialized database afterward.
 
-## Validation
+## Legacy data migration
+
+Use the standalone [LegacyMigration tool](LegacyMigration/README.md) to copy the old Azure SQL data into an initialized, empty destination. It supports Entra browser authentication, validates compatibility, preserves IDs and password hashes, and commits the import atomically only when invoked with `--apply`. It is never run automatically by deployments.
+
+## Schema validation
 
 CI runs deployment/check-sql.py against disposable SQL Server containers. It bootstraps twice to verify repeat initialization and executes Tests/SqlChecks against the actual repositories with the non-administrator API login. Test data and volumes are isolated and removed afterward.
