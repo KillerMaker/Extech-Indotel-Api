@@ -33,7 +33,7 @@ namespace Exatech_Indotel_API.Services.Wispro
         {
             client.NationalIdentificationNumber = client.NationalIdentificationNumber?.Replace("-","");
 
-            var createResponse = await _clientsHttpClient.PostAsJsonAsync($"?name = {client.Name}", client);
+            using var createResponse = await _clientsHttpClient.PostAsJsonAsync($"?name={Uri.EscapeDataString(client.Name)}", client);
 
             if (!createResponse.IsSuccessStatusCode)
                 throw new AggregateException($"Call To Wispro API: /api/clients failed with code: {createResponse.StatusCode}");
@@ -42,7 +42,10 @@ namespace Exatech_Indotel_API.Services.Wispro
 
             var createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult);
 
-            var createdClient = await GetClient(client.NationalIdentificationNumber);
+            // Use the POST result: a search immediately after creation may not see the new client yet.
+            var createdClient = createResult?.Data;
+            if (string.IsNullOrWhiteSpace(createdClient?.Id) || createdClient.PublicId is null)
+                throw new InvalidOperationException("Wispro accepted the creation request but returned no client identifiers. Verify the client in Wispro before retrying.");
 
             return createdClient;
         }

@@ -394,6 +394,23 @@ var invalidContact = NewClient("Bombita"); invalidContact.PhoneMobile = "123";
 Check(!validator.Validate(invalidContact).IsValid, "phase 2 creation rejects invalid beneficiary phone");
 Check(SiubenPhoneNumber.IsValid(null, "809-555-1234"), "beneficiary phone falls back to fixed phone");
 
+var postFactory = new FakeFactory();
+var postProxy = new WisproApiProxy(Options.Create(new AppOptions
+{
+    WisproClientsUrl = "https://wispro.test/clients", WisproContractsUrl = "https://wispro.test/contracts", WisproApiKey = "test"
+}), postFactory, new FakeCache());
+postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"posted-client","public_id":456}}""");
+var postedClient = await postProxy.CreateClient(new WisproClient { Name = "Test & Client", NationalIdentificationNumber = "001-0011879-3" });
+Check(postedClient?.Id == "posted-client" && postedClient.PublicId == 456, "Wispro creation returns identifiers from POST response");
+Check(postFactory.Requests.Count == 1, "Wispro creation does not depend on immediate search visibility");
+Check(Uri.UnescapeDataString(postFactory.Requests[0].Query) == "?name=Test & Client", "Wispro creation escapes the name query parameter");
+postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"posted-client"}}""");
+await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects missing public ID rather than inventing one");
+postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"","public_id":456}}""");
+await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects blank identifiers");
+postFactory.Enqueue(HttpStatusCode.BadRequest, "{}");
+await Throws<AggregateException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects failed POST without searching");
+
 var contractFactory = new FakeFactory();
 var contractProxy = new WisproApiProxy(Options.Create(new AppOptions
 {

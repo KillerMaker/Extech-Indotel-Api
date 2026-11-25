@@ -8,7 +8,7 @@ namespace Exatech_Indotel_API.Models.Wispro
         public string Id { get; set; } = string.Empty;
 
         [JsonPropertyName("public_id")]
-        public int? PublicId { get; set; } = 10000;
+        public int? PublicId { get; set; }
 
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;

@@ -86,7 +86,7 @@ namespace Exatech_Indotel_API.Services.Clients
             
             var wisproResponse = await _wisproApiProxy.CreateClient(wisproClient);
 
-            if (wisproResponse?.Id is null || wisproResponse?.PublicId is null)
+            if (string.IsNullOrWhiteSpace(wisproResponse?.Id) || wisproResponse.PublicId is null)
                 throw new AggregateException("Failed to create Client in Wispro");
 
             var clientEntity = clientDto.ToClient(wisproResponse.Id, userId, wisproResponse.PublicId.Value);
