@@ -43,7 +43,8 @@ public abstract class SiubenApiClient
         }, timeout.Token);
 
         if (!response.IsSuccessStatusCode)
-            throw new SiubenApiException(HttpStatusCode.BadGateway, "Siuben authentication failed.");
+            throw new SiubenApiException(HttpStatusCode.BadGateway,
+                "No se pudo iniciar sesión con Siuben. Contacte al administrador para verificar las credenciales.", "Error de conexión con Siuben");
 
         var login = await response.Content.ReadFromJsonAsync<SiubenLoginResponse>(timeout.Token);
 
@@ -81,18 +82,33 @@ public abstract class SiubenApiClient
 
     protected static async Task EnsureSuccess(HttpResponseMessage response)
     {
-        if (response.IsSuccessStatusCode) return;
-        string message = "Siuben request failed.";
-        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
+        string? title = null, customMessage = null, extra = null;
+        try
         {
-            try
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (json.RootElement.ValueKind == JsonValueKind.Object)
             {
-                using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-                if (json.RootElement.TryGetProperty("extraInformation", out var info) && info.ValueKind == JsonValueKind.String)
-                    message = info.GetString() ?? message;
+                string? Text(string name) => json.RootElement.TryGetProperty(name, out var value) &&
+                    value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
+                        ? value.GetString()!.Trim() : null;
+                title = Text("customTitle");
+                customMessage = Text("customMessage");
+                extra = Text("extraInformation");
             }
-            catch (JsonException) { }
         }
-        throw new SiubenApiException(response.StatusCode, message);
+        catch (JsonException) { }
+
+        var customFailure = title is not null || customMessage is not null;
+        if (response.IsSuccessStatusCode && !customFailure) return;
+        var status = response.IsSuccessStatusCode ? HttpStatusCode.BadRequest : response.StatusCode;
+        var businessFailure = status is HttpStatusCode.BadRequest or HttpStatusCode.NotFound or
+            HttpStatusCode.Conflict or HttpStatusCode.UnprocessableEntity ||
+            (status == HttpStatusCode.Forbidden && customFailure);
+        if (!businessFailure)
+            throw new SiubenApiException(status, "Siuben no pudo completar la solicitud. Intente más tarde o contacte al administrador.",
+                "No se pudo consultar Siuben");
+
+        throw new SiubenApiException(status, extra ?? customMessage ?? "Siuben no pudo completar la solicitud con los datos proporcionados.",
+            title, customMessage, extra);
     }
 }

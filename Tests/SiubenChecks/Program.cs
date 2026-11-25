@@ -221,6 +221,34 @@ Check(context.Response.StatusCode == 400, "Siuben business errors mapped to 400"
 context = new DefaultHttpContext(); context.Response.Body = new MemoryStream();
 await handler.TryHandleAsync(context, new SiubenApiException(HttpStatusCode.Unauthorized, "Authentication failed"), default);
 Check(context.Response.StatusCode == 502, "upstream credential failures mapped to 502");
+var customFactory = new FakeFactory();
+var customProxy = new SiubenPhase2ApiProxy(settings, customFactory, new FakeCache());
+customFactory.Enqueue(HttpStatusCode.OK, """{"token":"custom-token"}""");
+const string customSiubenError = """{"customTitle":"Elemento no cumple los criterios","customMessage":"El elemento que esta consultando no cumple con criterios validos","extraInformation":"Persona no elegible - Forma parte de una prestadora","targetSite":null,"message":"Exception of type 'Indotel.Util.ErrorResponses.Exceptions.ItemNotValid_customExceptionException' was thrown.","data":{},"innerException":null,"stackTrace":"internal stack"}""";
+foreach (var upstreamStatus in new[] { HttpStatusCode.BadRequest, HttpStatusCode.OK, HttpStatusCode.Forbidden })
+{
+    customFactory.Enqueue(upstreamStatus, customSiubenError);
+    try { await customProxy.GetContract("00100118793"); throw new Exception("Expected custom Siuben error"); }
+    catch (SiubenApiException exception)
+    {
+        context = new DefaultHttpContext(); context.Response.Body = new MemoryStream();
+        await handler.TryHandleAsync(context, exception, default);
+        context.Response.Body.Position = 0;
+        using var errorJson = await JsonDocument.ParseAsync(context.Response.Body);
+        var body = errorJson.RootElement;
+        Check(body.GetProperty("title").GetString() == "Elemento no cumple los criterios" &&
+            body.GetProperty("customMessage").GetString()!.Contains("criterios validos") &&
+            body.GetProperty("extraInformation").GetString()!.Contains("prestadora"), "Siuben custom title, explanation and reason reach the frontend");
+        Check(!body.GetRawText().Contains("customException") && !body.TryGetProperty("stackTrace", out _) &&
+            body.TryGetProperty("traceId", out _), "Siuben internal exception data stripped while correlation retained");
+        Check(context.Response.StatusCode == (upstreamStatus == HttpStatusCode.Forbidden ? 422 : 400),
+            "Siuben business envelopes use actionable client error statuses, including HTTP 200 envelopes");
+    }
+}
+context = new DefaultHttpContext(); context.Response.Body = new MemoryStream();
+await handler.TryHandleAsync(context, new InvalidOperationException("private database connection details"), default);
+context.Response.Body.Position = 0;
+Check(!(await new StreamReader(context.Response.Body).ReadToEndAsync()).Contains("private database"), "unexpected errors do not expose internal exception messages");
 var clientsService = new ClientsService(new FixedResolver(first, second, localities), new FakeWispro(), null!, new HttpContextAccessor(), null!, localities);
 factory.Enqueue(HttpStatusCode.OK, """
 {"idHogar":"home","cedula":"00100118793","provincia":"Barahona","provinciaCodigo":"04","nombre":"Name","apellidos":"Last","categoria_pobreza":2,"categoriaIcv":1,"nocontrato":"contract"}
@@ -419,11 +447,11 @@ Check(postedClient?.Id == "posted-client" && postedClient.PublicId == 456, "Wisp
 Check(postFactory.Requests.Count == 1, "Wispro creation does not depend on immediate search visibility");
 Check(Uri.UnescapeDataString(postFactory.Requests[0].Query) == "?name=Test & Client", "Wispro creation escapes the name query parameter");
 postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"posted-client"}}""");
-await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects missing public ID rather than inventing one");
+await Throws<ApiException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects missing public ID rather than inventing one");
 postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"","public_id":456}}""");
-await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects blank identifiers");
+await Throws<ApiException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects blank identifiers");
 postFactory.Enqueue(HttpStatusCode.BadRequest, "{}");
-await Throws<AggregateException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects failed POST without searching");
+await Throws<ApiException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects failed POST without searching");
 
 postFactory.Enqueue(HttpStatusCode.OK, """{"status":400,"message":"Invalid record","errors":{"email":["taken"]}}""");
 try
@@ -431,15 +459,64 @@ try
     await postProxy.CreateClient(new WisproClient());
     throw new Exception("Expected Wispro business error");
 }
-catch (InvalidOperationException exception)
+catch (ApiException exception)
 {
-    Check(exception.Message.Contains("status 400") && exception.Message.Contains("email") && !exception.Message.Contains("no client identifiers"),
+    Check(exception.StatusCode == HttpStatusCode.BadRequest && exception.Errors?.ContainsKey("email") == true && exception.Code == "WISPRO_CREATION_REJECTED",
         "Wispro HTTP 200 business rejection reports status and field instead of claiming creation succeeded");
 }
 postFactory.Enqueue(HttpStatusCode.OK, """{"status":401,"message":"Unauthorized","errors":{}}""");
-await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro HTTP 200 unauthorized envelope is rejected");
+await Throws<ApiException>(() => postProxy.CreateClient(new WisproClient()), "Wispro HTTP 200 unauthorized envelope is rejected");
 postFactory.Enqueue(HttpStatusCode.OK, """{"data":{"id":"not-confirmed","public_id":456}}""");
-await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation requires a successful envelope status");
+await Throws<ApiException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation requires a successful envelope status");
+
+var recoveryFactory = new FakeFactory();
+var recoveryCache = new FakeCache();
+await recoveryCache.SetAsync("wispro-00100118793", new WisproClient { Id = "stale", PublicId = 999 }, TimeSpan.FromMinutes(15));
+var recoveryProxy = new WisproApiProxy(Options.Create(new AppOptions
+{
+    WisproClientsUrl = "https://wispro.test/clients", WisproContractsUrl = "https://wispro.test/contracts", WisproApiKey = "test"
+}), recoveryFactory, recoveryCache);
+WisproClient CreationWithoutIds() => new() { Name = "Test", NationalIdentificationNumber = "001-0011879-3" };
+string recoveredData = """{"status":200,"data":[{"id":"recovered","public_id":123,"national_identification_number":"00100118793"}]}""";
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{}}""");
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":[]}""");
+recoveryFactory.Enqueue(HttpStatusCode.OK, recoveredData);
+Check((await recoveryProxy.CreateClient(CreationWithoutIds()))?.Id == "recovered", "missing POST identifiers recovered by fresh lookup, bypassing stale Redis");
+Check(recoveryFactory.Requests.Count(request => request.Method == HttpMethod.Post) == 1 &&
+    recoveryFactory.Requests.Count(request => request.Method == HttpMethod.Get) == 2, "delayed visibility retries GET only, never POST");
+Check(recoveryFactory.Requests[^1].Query == "?national_identification_number_eq=00100118793", "recovery filters normalized cedula");
+
+foreach (var rows in new[]
+{
+    """{"status":200,"data":[{"id":"other","public_id":22,"national_identification_number":"99999999999"}]}""",
+    """{"status":200,"data":[]}"""
+})
+{
+    var before = recoveryFactory.Requests.Count;
+    recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200}""");
+    for (var attempt = 0; attempt < 3; attempt++) recoveryFactory.Enqueue(HttpStatusCode.OK, rows);
+    try { await recoveryProxy.CreateClient(CreationWithoutIds()); throw new Exception("Expected pending identification"); }
+    catch (ApiException exception)
+    {
+        Check(exception.Code == "WISPRO_IDENTIFICATION_PENDING" && exception.StatusCode == HttpStatusCode.Conflict,
+            "unresolved lookup explains creation pending without claiming creation failed");
+    }
+    Check(recoveryFactory.Requests.Count - before == 4, "recovery bounded to one POST and three GETs");
+}
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200}""");
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":[{"id":"one","public_id":1,"national_identification_number":"00100118793"},{"id":"two","public_id":2,"national_identification_number":"00100118793"}]}""");
+await Throws<ApiException>(() => recoveryProxy.CreateClient(CreationWithoutIds()), "ambiguous exact document matches never select arbitrary client");
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"expected"}}""");
+recoveryFactory.Enqueue(HttpStatusCode.OK, recoveredData);
+await Throws<ApiException>(() => recoveryProxy.CreateClient(CreationWithoutIds()), "partial POST ID cannot be replaced by a different client ID");
+Check(recoveryFactory.Pending == 0, "recovery consumes only the expected bounded responses");
+var recoveredRepository = new FakeClients();
+var recoveredService = new ClientsService(new FixedResolver(first, second, localities), recoveryProxy, recoveredRepository,
+    createContext, new FakeEmail(), localities);
+recoveryFactory.Enqueue(HttpStatusCode.OK, """{"status":200}""");
+recoveryFactory.Enqueue(HttpStatusCode.OK, recoveredData);
+Check((await recoveredService.CreateClient(NewClient("Bombita")))?.WisproId == "recovered" &&
+    recoveredRepository.Created.Single().WisproId == "recovered", "recovered identifiers are persisted and returned through actual creation flow");
 
 var contractFactory = new FakeFactory();
 var contractProxy = new WisproApiProxy(Options.Create(new AppOptions

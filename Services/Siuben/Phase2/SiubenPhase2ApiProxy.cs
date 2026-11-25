@@ -18,7 +18,7 @@ public class SiubenPhase2ApiProxy : SiubenApiClient, ISiubenApiProxy
         using var response = await Send(HttpMethod.Get, $"/api/data_fase2/get/{NormalizeDocument(documentNumber)}");
 
         if (response.StatusCode == HttpStatusCode.NotFound) return new(false, IsEligible: false, Reason: "Persona no encontrada");
-            await EnsureSuccess(response);
+        await EnsureSuccess(response);
 
         var result = await ReadResponse(response);
 

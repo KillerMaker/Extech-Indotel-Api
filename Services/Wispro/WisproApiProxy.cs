@@ -35,29 +35,91 @@ namespace Exatech_Indotel_API.Services.Wispro
 
             using var createResponse = await _clientsHttpClient.PostAsJsonAsync($"?name={Uri.EscapeDataString(client.Name)}", client);
 
-            if (!createResponse.IsSuccessStatusCode)
-                throw new AggregateException($"Call To Wispro API: /api/clients failed with code: {createResponse.StatusCode}");
-
             var createJsonResult = await createResponse.Content.ReadAsStringAsync();
-
-            var createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult);
+            WisproPostResponse<WisproClient>? createResult;
+            try { createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult); }
+            catch (JsonException)
+            {
+                throw new ApiException(System.Net.HttpStatusCode.BadGateway, "WISPRO_INVALID_RESPONSE", "Respuesta no válida de Wispro",
+                    "No se pudo interpretar la respuesta de Wispro. Verifique si el cliente fue creado antes de intentarlo de nuevo.", "wispro");
+            }
             System.Diagnostics.Activity.Current?.SetTag("wispro.response.status", createResult?.Status);
 
             // Wispro also reports rejected operations inside an HTTP 200 response.
-            if (createResult is null || createResult.Status < 200 || createResult.Status >= 300)
+            if (!createResponse.IsSuccessStatusCode || createResult is null || createResult.Status < 200 || createResult.Status >= 300)
             {
                 var fields = createResult?.Errors?.Keys.ToArray() ?? [];
                 System.Diagnostics.Activity.Current?.SetTag("wispro.error.fields", string.Join(",", fields));
-                var details = fields.Length == 0 ? string.Empty : $" Affected fields: {string.Join(", ", fields)}.";
-                throw new InvalidOperationException($"Wispro rejected client creation (response status {createResult?.Status ?? 0}).{details}");
+                var status = createResult?.Status >= 400 ? createResult.Status : (int)createResponse.StatusCode;
+                var validation = status is 400 or 409 or 422;
+                var errors = createResult?.Errors?.ToDictionary(item => item.Key, item => item.Value.ValueKind switch
+                {
+                    JsonValueKind.String => new[] { item.Value.GetString()! },
+                    JsonValueKind.Array => item.Value.EnumerateArray().Where(value => value.ValueKind == JsonValueKind.String)
+                        .Select(value => value.GetString()!).ToArray(),
+                    _ => Array.Empty<string>()
+                });
+                throw new ApiException(validation ? System.Net.HttpStatusCode.BadRequest : System.Net.HttpStatusCode.BadGateway,
+                    "WISPRO_CREATION_REJECTED", "Wispro no pudo crear el cliente",
+                    validation ? "Wispro rechazó los datos del cliente. Revise los campos indicados; es posible que alguno ya esté registrado." :
+                    "No se pudo completar la creación en Wispro. Contacte al administrador para verificar la conexión y los permisos.",
+                    "wispro", errors);
             }
 
             // Use the POST result: a search immediately after creation may not see the new client yet.
             var createdClient = createResult?.Data;
-            if (string.IsNullOrWhiteSpace(createdClient?.Id) || createdClient.PublicId is null)
-                throw new InvalidOperationException("Wispro reported creation success but returned no client identifiers. Verify the client in Wispro before retrying.");
+            if (string.IsNullOrWhiteSpace(createdClient?.Id) || createdClient.PublicId is null or <= 0)
+                return await FindCreatedClient(client.NationalIdentificationNumber, createdClient?.Id);
 
             return createdClient;
+        }
+
+        private static ApiException IdentificationPending() => new(System.Net.HttpStatusCode.Conflict,
+            "WISPRO_IDENTIFICATION_PENDING", "Cliente creado en Wispro; identificación pendiente",
+            "Wispro informó que creó el cliente, pero aún no se pudieron obtener sus identificadores. No vuelva a crearlo. Verifique el cliente en Wispro y contacte al administrador para completar el registro local.", "wispro");
+
+        private async Task<WisproClient> FindCreatedClient(string? documentNumber, string? createdId)
+        {
+            var document = documentNumber?.Replace("-", "").Trim();
+            if (document?.Length != 11 || document.Any(value => value < '0' || value > '9'))
+                throw IdentificationPending();
+
+            // Bypass Redis: an earlier lookup must not determine the result of a new creation.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                for (var attempt = 0; attempt < 3; attempt++)
+                {
+                    if (attempt > 0) await Task.Delay(attempt == 1 ? 250 : 750, timeout.Token);
+                    using var response = await _clientsHttpClient.GetAsync(
+                        $"?national_identification_number_eq={Uri.EscapeDataString(document)}", timeout.Token);
+                    if (!response.IsSuccessStatusCode) break;
+                    var result = await response.Content.ReadFromJsonAsync<WisproGetResponse<WisproClient>>(timeout.Token);
+                    if (result?.Status != 200 || result.Data is null) break;
+                    if (result.Meta is JsonElement { ValueKind: JsonValueKind.Object } meta &&
+                        meta.TryGetProperty("pagination", out var pagination))
+                    {
+                        if (pagination.ValueKind != JsonValueKind.Object ||
+                            (pagination.TryGetProperty("total_pages", out var pages) &&
+                                (pages.ValueKind != JsonValueKind.Number || !pages.TryGetInt32(out var totalPages) || totalPages > 1)))
+                            break;
+                    }
+                    var candidates = result.Data.Where(candidate =>
+                        candidate.NationalIdentificationNumber?.Replace("-", "").Trim() == document).ToArray();
+                    if (candidates.Length > 1) break;
+                    var candidate = candidates.SingleOrDefault();
+                    if (candidate is not null && !string.IsNullOrWhiteSpace(candidate.Id) && candidate.PublicId is > 0)
+                    {
+                        if (!string.IsNullOrWhiteSpace(createdId) && candidate.Id != createdId) break;
+                        return candidate;
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or JsonException)
+            {
+                // The POST already succeeded; never retry creation because lookup failed.
+            }
+            throw IdentificationPending();
         }
 
         public async Task<WisproClient?> GetClient(string? documentNumber)

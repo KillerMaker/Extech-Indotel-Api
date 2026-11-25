@@ -111,6 +111,10 @@ The pipeline runs the Siuben checks, builds a .NET image, and checks container s
 
 ## API logs and OpenTelemetry
 
+Client creation uses Wispro's returned IDs when available. When Wispro reports creation success without IDs, the API bypasses Redis and performs up to three cedula lookups within five seconds. Recovery accepts only one exact match (and must match any ID already returned by POST). It never repeats the creation POST. If identification remains unresolved, HTTP 409 with code `WISPRO_IDENTIFICATION_PENDING` explains that the client may already exist in Wispro and must not be created again; local SQL insertion has not occurred. This state is not stored as a background job and requires manual reconciliation if recovery fails. No new database tables are introduced.
+
+Integration errors include a safe title, message, code, source, HTTP status and trace ID. Siuben custom business errors preserve `customTitle`, `customMessage` and `extraInformation`, without forwarding its internal exception fields. The portal displays the custom title and explanation/eligibility reason, includes a trace reference, and blocks resubmission of a creation whose Wispro identification is pending. Unexpected exceptions return a generic message rather than internal database/service details.
+
 The API writes structured JSON console logs and correlates logs and spans by trace ID. Each response includes `X-Trace-Id`; error responses also include `traceId`. Search this ID in your observability backend to follow a request. Client creation emits named stages for duplicate checking, Wispro creation, SQL insertion and email preparation, plus a separate Kafka publish span. Each stage records elapsed milliseconds and failures. Incoming request spans, outgoing HttpClient spans, HTTP metrics and runtime meters are captured. Health requests are excluded from traces/request completion logs.
 
 Remote export is optional: a blank endpoint keeps console logging active without sending data anywhere. Configure these GitHub Environment settings for an OTLP-compatible Collector or Elastic ingestion endpoint:

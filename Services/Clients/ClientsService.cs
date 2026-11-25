@@ -9,6 +9,7 @@ using Exatech_Indotel_API.Services.Siuben;
 using Exatech_Indotel_API.Services.Wispro;
 using Exatech_Indotel_API.Utilities.Extensions;
 using System.Text.Json;
+using Exatech_Indotel_API.Utilities;
 
 namespace Exatech_Indotel_API.Services.Clients
 {
@@ -90,7 +91,8 @@ namespace Exatech_Indotel_API.Services.Clients
             var wisproResponse = await TelemetryExtensions.RunStage("client.create_wispro", () => _wisproApiProxy.CreateClient(wisproClient), _logger);
 
             if (string.IsNullOrWhiteSpace(wisproResponse?.Id) || wisproResponse.PublicId is null)
-                throw new AggregateException("Failed to create Client in Wispro");
+                throw new ApiException(System.Net.HttpStatusCode.BadGateway, "WISPRO_MISSING_IDENTIFIERS", "No se pudo identificar el cliente",
+                    "No se recibieron los identificadores del cliente de Wispro. Verifique si fue creado antes de intentarlo de nuevo.", "wispro");
 
             var clientEntity = clientDto.ToClient(wisproResponse.Id, userId, wisproResponse.PublicId.Value);
 

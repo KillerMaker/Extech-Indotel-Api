@@ -61,7 +61,13 @@ namespace Exatech_Indotel_API.Controllers
             var response = await _clientsService.CreateClient(request);
 
             if(response is null)
-                return BadRequest(new {errorMessage = "Cliente ya existe en la base de datos"});
+                return Conflict(new
+                {
+                    title = "Cliente ya registrado",
+                    message = "Ya existe un cliente con esta cédula en el portal. Consulte su registro en lugar de crearlo nuevamente.",
+                    code = "CLIENT_ALREADY_EXISTS",
+                    traceId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? HttpContext.TraceIdentifier
+                });
 
             return Ok(response);
         }
