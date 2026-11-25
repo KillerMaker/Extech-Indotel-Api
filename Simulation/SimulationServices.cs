@@ -36,6 +36,7 @@ public static class SimulationSetup
     public static void AddServices(IServiceCollection services)
     {
         services.AddSingleton<IClientRepository, SimulationClients>();
+        services.AddSingleton<Exatech_Indotel_API.Repositories.PortalContentRepository.IPortalContentRepository, SimulationPortalContent>();
         services.AddSingleton<IUserRepository, SimulationUsers>();
         services.AddSingleton<ICacheService, SimulationCache>();
         services.AddSingleton<IEmailSenderService, SimulationEmail>();

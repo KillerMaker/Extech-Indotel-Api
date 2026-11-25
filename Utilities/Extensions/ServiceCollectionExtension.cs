@@ -75,6 +75,8 @@ namespace Exatech_Indotel_API.Utilities.Extensions
 
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
+            services.AddTransient<Exatech_Indotel_API.Repositories.PortalContentRepository.IPortalContentRepository,
+                Exatech_Indotel_API.Repositories.PortalContentRepository.PortalContentRepository>();
             services.AddTransient<IClientRepository, ClientRepository>();
             services.AddTransient<IUserRepository, UserRepository>();
             services.AddTransient<IEmailTemplateRepository, EmailTemplateRepository>();

@@ -31,6 +31,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 var count = 0;
+await PortalContentChecks.Run(Check);
 void Check(bool condition, string label)
 {
     if (!condition) throw new Exception($"FAIL: {label}");

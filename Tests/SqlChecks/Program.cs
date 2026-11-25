@@ -65,6 +65,18 @@ try
     throw new InvalidOperationException("Duplicate normalized document was accepted.");
 }
 catch (SqlException error) when (error.Number is 2601 or 2627) { assertions++; }
+var content = provider.GetRequiredService<Exatech_Indotel_API.Repositories.PortalContentRepository.IPortalContentRepository>();
+await content.Save(new Dictionary<string, string> { ["login.title"] = "Configuración persistente" }, created.UserId);
+Check((await content.GetAll())["login.title"] == "Configuración persistente", "Portal messages persist with application SQL permissions.");
+await content.Save(new Dictionary<string, string> { ["login.title"] = "Actualizado", ["home.title"] = "Inicio" }, created.UserId);
+Check((await content.GetAll())["login.title"] == "Actualizado", "Existing messages update without duplicate keys.");
+try
+{
+    await content.Save(new Dictionary<string, string> { ["login.title"] = "Invalid owner" }, -1);
+    throw new InvalidOperationException("Missing administrator FK was accepted.");
+}
+catch (SqlException error) when (error.Number == 547) { assertions++; }
+Check((await content.GetAll())["login.title"] == "Actualizado", "Failed portal settings transaction retains previous published content.");
 Console.WriteLine($"Passed {assertions} SQL repository checks.");
 
 sealed class TestConnectionFactory(string connectionString) : IDatabaseConnectionFactory
