@@ -207,7 +207,12 @@ Check(provider.GetRequiredService<IOptions<SiubenOptions>>().Value.Phase2.Userna
 await Throws<InvalidOperationException>(() => Task.FromResult(resolver.Resolve("Bombita")), "missing phase 2 configuration fails explicitly");
 
 var validator = new CreateClientValidator(localities);
-var client = new CreateClientRequest { Name = "Name", Email = "test@example.com", NationalIdentificationNumber = "00100118793", Locality = "Bombita", PhoneMobile = "8095551234" };
+var client = new CreateClientRequest { Name = "Name", Email = "test@example.com", NationalIdentificationNumber = "00100118793", Locality = "Bombita", State = "Barahona", Phone = "8095551234", PhoneMobile = "8095551234" };
+client.Phone = "";
+Check(!validator.Validate(client).IsValid, "fixed phone is required");
+client.Phone = "8095551234"; client.State = "";
+Check(!validator.Validate(client).IsValid, "user supplied province is required");
+client.State = "Barahona";
 Check(validator.Validate(client).IsValid, "phase 2 creation does not require unavailable poverty level");
 client.Locality = "Salinas";
 Check(!validator.Validate(client).IsValid, "phase 1 poverty requirement preserved");

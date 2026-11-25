@@ -25,6 +25,12 @@ namespace Exatech_Indotel_API.Controllers
             _validator = validator;
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("list")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> GetClients([FromQuery] ClientListRequest request) =>
+            Ok(await _clientsService.GetPage(request));
+
         [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetClient([FromQuery, Required, RegularExpression(@"^(?:[0-9]{11}|[0-9]{3}-[0-9]{7}-[0-9])$")] string documentNumber)

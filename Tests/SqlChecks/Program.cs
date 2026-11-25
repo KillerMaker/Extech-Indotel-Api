@@ -55,6 +55,14 @@ Check(await clients.GetByWisproId(suffix) is { SiubenActivated: true, SiubenDisa
 await clients.MarkSiubenDisabled(suffix, "CONTRACT-TEST");
 Check(await clients.GetByWisproId(suffix) is { SiubenActivated: false, SiubenDisabled: true }, "Deactivation flags.");
 Check((await clients.GetClientsForContractSynchronization()).Any(x => x.WisproId == suffix), "Scheduled synchronization query.");
+var filtered = await clients.GetPage(new Exatech_Indotel_API.Models.Client.ClientListRequest {
+    Search = email, Status = "disabled", HasContract = true, Locality = "El Naranjo", PageSize = 1
+});
+Check(filtered.Total == 1 && filtered.Items.Single().WisproId == suffix, "Client list combines status, contract, search and locality filters.");
+Check((await clients.GetPage(new() { Search = email, Status = "enabled" })).Total == 0, "Client list excludes other Siuben states.");
+Check((await clients.GetPage(new() { Search = "001-1234567-0" })).Total == 1, "Client list accepts formatted document search.");
+Check((await clients.GetPage(new() { Search = email, PageSize = 1, Page = 2 })).Items.Count == 0, "Client list paginates without losing the total.");
+Check((await clients.GetPage(new() { Search = "' OR 1=1 --" })).Total == 0, "Client list treats SQL search as literal data.");
 foreach (var name in new[] { "ClientCreated", "ClientUpdated", "UserCreated" })
     Check(!string.IsNullOrWhiteSpace((await templates.Get(name)).Template), "Email template seed: " + name);
 try

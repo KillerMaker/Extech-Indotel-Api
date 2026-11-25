@@ -41,6 +41,8 @@ namespace Exatech_Indotel_API.Services.Clients
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ClientsService>.Instance;
         }
 
+        public Task<ClientListResponse> GetPage(ClientListRequest request) => _clientRepository.GetPage(request);
+
         public async Task<ClientDetailsResponse?> GetByDocumentNumber(string documentNumber)
         {
             var document = documentNumber.Replace("-", string.Empty).Trim();

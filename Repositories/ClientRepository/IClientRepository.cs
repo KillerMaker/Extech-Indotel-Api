@@ -5,6 +5,9 @@ namespace Exatech_Indotel_API.Repositories.ClientRepository
 {
     public interface IClientRepository
     {
+        async Task<Models.Client.ClientListResponse> GetPage(Models.Client.ClientListRequest request) =>
+            request.Apply(await GetClientsForContractSynchronization());
+
         Task<Client?> GetByWisproId(string id);
         Task<Client?> GetByDocumentNumber(string documentNumber);
         Task<Client?> GetByEmail(string email);

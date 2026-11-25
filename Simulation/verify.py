@@ -1,10 +1,11 @@
 """Integration checks through Angular's proxy -> real API -> HTTP mocks + simulated repositories."""
 import json
+import os
 import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-BASE = 'http://127.0.0.1:4300'
+BASE = os.environ.get('SIMULATION_BASE_URL', 'http://127.0.0.1:4300')
 token = None
 checks = 0
 
@@ -28,6 +29,7 @@ for attempt in range(45):
         if attempt == 44: raise
         time.sleep(1)
 call('/api/client?documentNumber=00100118793', expected=401)
+call('/api/client/list', expected=401)
 mutation_routes = ['/api/siuben/synchronize']
 for route in mutation_routes:
     call(route+'?locality=Bombita', 'PUT', {'cedula':'00100118793'}, expected=401)
@@ -38,10 +40,18 @@ for route in mutation_routes:
     call(route+'?locality=Bombita', 'PUT', {'cedula':'00100118793'}, expected=403)
 call('/simulation/synchronize', 'POST', expected=403)
 call('/api/user/create', 'POST', {}, expected=403)
+call('/api/client/list', expected=403)
 call('/api/siuben/localities')
 state_after = call('/control/state', base='http://127.0.0.1:5199')
 assert state_before == state_after, 'unauthorized mutations must have no external side effects'
 token = call('/api/authorization/login', 'POST', {'email':'sim@example.com','password':'Simulation123!'})['token']
+listing = call('/api/client/list?pageSize=2')
+assert len(listing['items']) == 2 and listing['total'] > 2
+call('/api/client/list?page=0', expected=400)
+call('/api/client/list?pageSize=101', expected=400)
+call('/api/client/list?status=invalid', expected=400)
+disabled = call('/api/client/list?status=disabled&hasContract=true')
+assert all(c['siubenDisabled'] and not c['siubenActivated'] and c['contractNumber'] for c in disabled['items'])
 localities = call('/api/siuben/localities')
 assert any(x['name']=='Bombita' and x['phase']==2 for x in localities)
 assert call('/api/client?documentNumber=001-0011879-3')['client']['wisproId']=='sim-00100118793'
@@ -72,7 +82,7 @@ assert call('/api/client?documentNumber=66666666666')['alreadySynchronized']
 call('/api/siuben/synchronize', 'PUT', {'cedula':'66666666666'}, expected=409)
 
 call('/api/siuben/synchronize', 'PUT', {'cedula':'77777777777'}, expected=409)
-new = dict(name='Nuevo simulado', email='nuevo@example.com', nationalIdentificationNumber='88888888888', locality='Bombita', phone='8095551234', phoneMobile='', street='Calle simulada', number='20', city='Barahona', state='Barahona', pobertyLevel=0)
+new = dict(name='Nuevo simulado', email='nuevo@example.com', nationalIdentificationNumber='88888888888', locality='Bombita', phone='8095551234', phoneMobile='+18095551234', street='Calle simulada', number='20', city='Barahona', state='Barahona', pobertyLevel=0)
 call('/api/client/create', 'POST', new)
 assert call('/api/client?documentNumber=88888888888')['client']['name']=='Nuevo simulado'
 assert not call('/api/client?documentNumber=88888888888')['canSynchronize']

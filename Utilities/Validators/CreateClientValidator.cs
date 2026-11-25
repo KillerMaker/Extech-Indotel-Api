@@ -8,6 +8,11 @@ namespace Exatech_Indotel_API.Utilities.Validators
     {
         public CreateClientValidator(SiubenLocalities localities)
         {
+            RuleFor(x => x.State).NotEmpty().WithMessage("La provincia es obligatoria.");
+            RuleFor(x => x.Phone).Must(value => SiubenPhoneNumber.IsValid(null, value))
+                .WithMessage("El teléfono fijo es obligatorio y debe tener 10 dígitos.");
+            RuleFor(x => x.PhoneMobile).Must(value => SiubenPhoneNumber.IsValid(value, null))
+                .WithMessage("El teléfono móvil es obligatorio y debe tener 10 dígitos.");
             RuleFor(x => x.Name).NotEmpty().WithMessage("Name Is Required");
             RuleFor(x => x.Email).NotEmpty().WithMessage("Email Is Required");
             RuleFor(x => x.NationalIdentificationNumber).NotEmpty().WithMessage("National Identification Number Is Required");

@@ -5,6 +5,8 @@ namespace Exatech_Indotel_API.Services.Clients
 {
     public interface IClientsService
     {
+        Task<ClientListResponse> GetPage(ClientListRequest request);
+
         Task<ClientDetailsResponse?> GetByDocumentNumber(string documentNumber);
 
         Task<CheckClientResponse> CheckClient(string documentNumber, string? phoneNumber, string? email, string locality);
