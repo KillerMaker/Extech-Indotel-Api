@@ -15,9 +15,10 @@ namespace Exatech_Indotel_API.Utilities
 
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
         {
-            var message = exception.Message;
-
-            _logger.LogError(exception, message);
+            var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier;
+            _logger.LogError("Request failed with {ExceptionType}. Stack: {StackTrace}. TraceId: {TraceId}",
+                exception.GetType().FullName, exception.StackTrace, traceId);
+            System.Diagnostics.Activity.Current?.SetStatus(System.Diagnostics.ActivityStatusCode.Error);
 
             httpContext.Response.ContentType = "application/json";
             httpContext.Response.StatusCode = exception is SiubenApiException siuben
@@ -27,7 +28,8 @@ namespace Exatech_Indotel_API.Utilities
 
             var response = new
             {
-                message = exception.Message
+                message = exception.Message,
+                traceId
             };
 
             var result = JsonSerializer.Serialize(response);

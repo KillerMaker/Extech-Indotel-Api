@@ -43,6 +43,8 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore Tests/SiubenChecks/SiubenChecks.csproj
       - run: dotnet run --project Tests/SiubenChecks/SiubenChecks.csproj --configuration Release --no-restore
+      - name: Check OpenTelemetry export and redaction
+        run: python3 deployment/check-telemetry.py
       - name: Check legacy migration preflight
         run: dotnet run --project Database/LegacyMigration --configuration Release -- --self-test
       - name: Validate local integration configuration
@@ -136,6 +138,10 @@ jobs:
       SWAGGER_ENABLED: ${{ vars.SWAGGER_ENABLED }}
       LOG_LEVEL_DEFAULT: ${{ vars.LOG_LEVEL_DEFAULT }}
       LOG_LEVEL_ASPNETCORE: ${{ vars.LOG_LEVEL_ASPNETCORE }}
+      OTEL_SERVICE_NAME: ${{ vars.OTEL_SERVICE_NAME }}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${{ vars.OTEL_EXPORTER_OTLP_ENDPOINT }}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${{ vars.OTEL_EXPORTER_OTLP_PROTOCOL }}
+      OTEL_EXPORTER_OTLP_HEADERS: ${{ secrets.OTEL_EXPORTER_OTLP_HEADERS }}
       SIUBEN_URL: ${{ vars.SIUBEN_URL }}
       SIUBEN_USERNAME: ${{ secrets.SIUBEN_USERNAME }}
       SIUBEN_PASSWORD: ${{ secrets.SIUBEN_PASSWORD }}

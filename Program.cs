@@ -10,6 +10,7 @@ namespace Exatech_Indotel_API
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.AddApiTelemetry();
 
             builder.Services.AddCors(options =>
             {
@@ -22,7 +23,7 @@ namespace Exatech_Indotel_API
                         else
                             policy.WithOrigins(origins);
 
-                        policy.AllowAnyMethod().AllowAnyHeader();
+                        policy.AllowAnyMethod().AllowAnyHeader().WithExposedHeaders("X-Trace-Id");
                     });
             });
 
@@ -58,6 +59,21 @@ namespace Exatech_Indotel_API
             var app = builder.Build();
 
             app.UseForwardedHeaders();
+            app.Use(async (context, next) =>
+            {
+                var started = System.Diagnostics.Stopwatch.StartNew();
+                var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+                context.Response.Headers["X-Trace-Id"] = traceId;
+                try { await next(context); }
+                finally
+                {
+                    if (context.Request.Path != "/health")
+                        app.Logger.LogInformation("HTTP {Method} {Route} responded {StatusCode} in {ElapsedMs} ms. TraceId: {TraceId}",
+                            context.Request.Method,
+                            (context.GetEndpoint() as Microsoft.AspNetCore.Routing.RouteEndpoint)?.RoutePattern.RawText ?? "unmatched",
+                            context.Response.StatusCode, started.Elapsed.TotalMilliseconds, traceId);
+                }
+            });
             app.UseExceptionHandler("/Error");
             app.UseCors();
             if (builder.Configuration.GetValue("Swagger:Enabled", builder.Environment.IsDevelopment()))

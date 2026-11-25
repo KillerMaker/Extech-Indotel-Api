@@ -41,11 +41,21 @@ namespace Exatech_Indotel_API.Services.Wispro
             var createJsonResult = await createResponse.Content.ReadAsStringAsync();
 
             var createResult = JsonSerializer.Deserialize<WisproPostResponse<WisproClient>>(createJsonResult);
+            System.Diagnostics.Activity.Current?.SetTag("wispro.response.status", createResult?.Status);
+
+            // Wispro also reports rejected operations inside an HTTP 200 response.
+            if (createResult is null || createResult.Status < 200 || createResult.Status >= 300)
+            {
+                var fields = createResult?.Errors?.Keys.ToArray() ?? [];
+                System.Diagnostics.Activity.Current?.SetTag("wispro.error.fields", string.Join(",", fields));
+                var details = fields.Length == 0 ? string.Empty : $" Affected fields: {string.Join(", ", fields)}.";
+                throw new InvalidOperationException($"Wispro rejected client creation (response status {createResult?.Status ?? 0}).{details}");
+            }
 
             // Use the POST result: a search immediately after creation may not see the new client yet.
             var createdClient = createResult?.Data;
             if (string.IsNullOrWhiteSpace(createdClient?.Id) || createdClient.PublicId is null)
-                throw new InvalidOperationException("Wispro accepted the creation request but returned no client identifiers. Verify the client in Wispro before retrying.");
+                throw new InvalidOperationException("Wispro reported creation success but returned no client identifiers. Verify the client in Wispro before retrying.");
 
             return createdClient;
         }
@@ -60,7 +70,7 @@ namespace Exatech_Indotel_API.Services.Wispro
             var response = await _clientsHttpClient.GetAsync($"?national_identification_number_eq={documentNumber}");
 
             if (!response.IsSuccessStatusCode)
-                throw new AggregateException($"Call To Wispro API: /api/clients?national_identification_number_eq={documentNumber} failed with code: {response.StatusCode}");
+                throw new AggregateException($"Call To Wispro API: client lookup failed with code: {response.StatusCode}");
 
             string json = await response.Content.ReadAsStringAsync();
 

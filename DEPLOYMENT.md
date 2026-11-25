@@ -109,6 +109,25 @@ Keep ASPNETCORE_ENVIRONMENT and DOTNET_ENVIRONMENT equal (defaults Production, i
 
 The pipeline runs the Siuben checks, builds a .NET image, and checks container startup before deploying. The SSH deployment validates Compose, pulls the release, waits for container health, reloads Caddy and checks both loopback and public HTTPS health. `/health` reports process health; it does not verify SQL, Wispro, Siuben or Kafka connectivity. Failed public health checks fail the job; automatic rollback is not performed.
 
+## API logs and OpenTelemetry
+
+The API writes structured JSON console logs and correlates logs and spans by trace ID. Each response includes `X-Trace-Id`; error responses also include `traceId`. Search this ID in your observability backend to follow a request. Client creation emits named stages for duplicate checking, Wispro creation, SQL insertion and email preparation, plus a separate Kafka publish span. Each stage records elapsed milliseconds and failures. Incoming request spans, outgoing HttpClient spans, HTTP metrics and runtime meters are captured. Health requests are excluded from traces/request completion logs.
+
+Remote export is optional: a blank endpoint keeps console logging active without sending data anywhere. Configure these GitHub Environment settings for an OTLP-compatible Collector or Elastic ingestion endpoint:
+
+| Name | Kind | Value |
+|---|---|---|
+| `OTEL_SERVICE_NAME` | Variable | `exatech-indotel-api` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Variable | OTLP **base** endpoint, e.g. `http://otel-collector:4318` on the Docker network or your HTTPS Elastic Managed OTLP endpoint |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | Variable | `http/protobuf` (default), or `grpc` (usually port 4317) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Secret | Optional authentication headers, e.g. `Authorization=ApiKey%20YOUR_API_KEY` |
+
+For HTTP/protobuf the API appends `/v1/logs`, `/v1/traces` and `/v1/metrics` to the base endpoint. Use an endpoint supporting all three signals. Exporters batch asynchronously and have a five-second export timeout; collector failure does not wait in the request path. Telemetry is best effort rather than durable storage. Service metadata includes the configured service name and ASP.NET environment.
+
+Kibana is the UI, not the OTLP receiver: use Elastic's ingestion endpoint or a Collector forwarding to Elasticsearch, then view the service in Kibana. This change does not deploy Elasticsearch, Kibana or a Collector, nor create an Elastic subscription. An existing Collector must join the Docker network to use the example hostname. Keep tokens in the headers secret, not in the endpoint URL. Deployment tooling includes these settings in the generated API environment.
+
+Instrumentation does not collect request/response bodies or authorization headers. Exported dependency URLs are reduced to their origin and query/path tags are removed so cedulas in URLs are not exported. Application request logs use route templates, not raw URLs. Error logs retain exception type and stack without exception text; detailed API error responses remain available to the caller. Keep arbitrary client data out of any future custom log messages. `deployment/check-telemetry.py` tests actual authenticated HTTP exports to a disposable local receiver, all three signals, trace headers and URL redaction; the pipeline runs this check before deployment.
+
 On the droplet:
 
 ```bash

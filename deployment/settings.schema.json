@@ -1,5 +1,33 @@
 [
   {
+    "name": "OTEL_SERVICE_NAME",
+    "source": "OTEL_SERVICE_NAME",
+    "kind": "variable",
+    "required": false,
+    "default": "exatech-indotel-api"
+  },
+  {
+    "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "source": "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "kind": "variable",
+    "required": false,
+    "default": ""
+  },
+  {
+    "name": "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "source": "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "kind": "variable",
+    "required": false,
+    "default": "http/protobuf"
+  },
+  {
+    "name": "OTEL_EXPORTER_OTLP_HEADERS",
+    "source": "OTEL_EXPORTER_OTLP_HEADERS",
+    "kind": "secret",
+    "required": false,
+    "default": ""
+  },
+  {
     "name": "ASPNETCORE_ENVIRONMENT",
     "source": "ASPNETCORE_ENVIRONMENT",
     "kind": "variable",

@@ -59,13 +59,18 @@ namespace Exatech_Indotel_API.Services.Email
 
         private async Task PublishToKafkaAsync(string payload)
         {
+            using var activity = TelemetryExtensions.Activities.StartActivity("email.publish_kafka", System.Diagnostics.ActivityKind.Producer);
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 await _producer.ProduceAsync(_queueOptions.Topic, new Message<Null, string> { Value = payload });
+                _logger.LogInformation("Kafka email publication completed in {ElapsedMs} ms", timer.Elapsed.TotalMilliseconds);
             }
             catch (Exception exception)
             {
                 // Do not log the exception's Kafka message: it contains client contact details.
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error);
+                activity?.SetTag("error.type", exception.GetType().FullName);
                 _logger.LogError("Background Kafka email publication failed ({FailureType}).", exception.GetType().Name);
             }
         }

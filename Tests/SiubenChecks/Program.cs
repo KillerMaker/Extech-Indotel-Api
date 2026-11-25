@@ -43,6 +43,20 @@ async Task Throws<T>(Func<Task> action, string label) where T : Exception
     throw new Exception($"FAIL: {label}");
 }
 
+using (var privateActivity = new System.Diagnostics.Activity("privacy-test"))
+{
+    privateActivity.SetTag("url.full", "https://siuben.test/api/data/00100118793?token=private");
+    privateActivity.SetTag("http.url", "https://wispro.test/clients?email=private");
+    privateActivity.SetTag("url.query", "document=private");
+    privateActivity.SetTag("url.path", "/client/private");
+    privateActivity.SetTag("exception.message", "private input");
+    new PrivateUrlProcessor().OnEnd(privateActivity);
+    Check((string?)privateActivity.GetTagItem("url.full") == "https://siuben.test/" &&
+        (string?)privateActivity.GetTagItem("http.url") == "https://wispro.test/" &&
+        privateActivity.GetTagItem("url.query") is null && privateActivity.GetTagItem("url.path") is null &&
+        privateActivity.GetTagItem("exception.message") is null, "telemetry strips private URL paths, queries and exception text");
+}
+
 var configuration = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory).AddJsonFile("appsettings.json").Build();
 var localityOptions = configuration.GetSection("Siuben").Get<SiubenOptions>()!;
 var localities = new SiubenLocalities(Options.Create(localityOptions));
@@ -410,6 +424,22 @@ postFactory.Enqueue(HttpStatusCode.OK, """{"status":200,"data":{"id":"","public_
 await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects blank identifiers");
 postFactory.Enqueue(HttpStatusCode.BadRequest, "{}");
 await Throws<AggregateException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation rejects failed POST without searching");
+
+postFactory.Enqueue(HttpStatusCode.OK, """{"status":400,"message":"Invalid record","errors":{"email":["taken"]}}""");
+try
+{
+    await postProxy.CreateClient(new WisproClient());
+    throw new Exception("Expected Wispro business error");
+}
+catch (InvalidOperationException exception)
+{
+    Check(exception.Message.Contains("status 400") && exception.Message.Contains("email") && !exception.Message.Contains("no client identifiers"),
+        "Wispro HTTP 200 business rejection reports status and field instead of claiming creation succeeded");
+}
+postFactory.Enqueue(HttpStatusCode.OK, """{"status":401,"message":"Unauthorized","errors":{}}""");
+await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro HTTP 200 unauthorized envelope is rejected");
+postFactory.Enqueue(HttpStatusCode.OK, """{"data":{"id":"not-confirmed","public_id":456}}""");
+await Throws<InvalidOperationException>(() => postProxy.CreateClient(new WisproClient()), "Wispro creation requires a successful envelope status");
 
 var contractFactory = new FakeFactory();
 var contractProxy = new WisproApiProxy(Options.Create(new AppOptions

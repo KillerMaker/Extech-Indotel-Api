@@ -20,6 +20,7 @@ namespace Exatech_Indotel_API.Services.Clients
         private readonly IClientRepository _clientRepository;
         private readonly IHttpContextAccessor _contextAccesor;
         private readonly IEmailSenderService _emailSender;
+        private readonly ILogger<ClientsService> _logger;
 
         public ClientsService(
             ISiubenApiProxyResolver siubenResolver,
@@ -27,7 +28,8 @@ namespace Exatech_Indotel_API.Services.Clients
             IClientRepository clientRepository, 
             IHttpContextAccessor contextAccessor,
             IEmailSenderService emailSenderService,
-            SiubenLocalities localities)
+            SiubenLocalities localities,
+            ILogger<ClientsService>? logger = null)
         {
             _localities = localities;
             _wisproApiProxy = wisproApiProxy;
@@ -35,6 +37,7 @@ namespace Exatech_Indotel_API.Services.Clients
             _clientRepository = clientRepository;
             _contextAccesor = contextAccessor;
             _emailSender = emailSenderService;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ClientsService>.Instance;
         }
 
         public async Task<ClientDetailsResponse?> GetByDocumentNumber(string documentNumber)
@@ -76,7 +79,7 @@ namespace Exatech_Indotel_API.Services.Clients
         {
             clientDto.Locality = _localities.GetName(clientDto.Locality);
 
-            if (await _clientRepository.Exists(clientDto.NationalIdentificationNumber))
+            if (await TelemetryExtensions.RunStage("client.check_duplicate", () => _clientRepository.Exists(clientDto.NationalIdentificationNumber), _logger))
                 return null;
 
             var wisproClient = clientDto.ToWisproClient();
@@ -84,16 +87,16 @@ namespace Exatech_Indotel_API.Services.Clients
             var userId = _contextAccesor.HttpContext?.User.Claims
                 .First(claim => claim.Type.Equals("userId")).Value ?? throw new Exception();
             
-            var wisproResponse = await _wisproApiProxy.CreateClient(wisproClient);
+            var wisproResponse = await TelemetryExtensions.RunStage("client.create_wispro", () => _wisproApiProxy.CreateClient(wisproClient), _logger);
 
             if (string.IsNullOrWhiteSpace(wisproResponse?.Id) || wisproResponse.PublicId is null)
                 throw new AggregateException("Failed to create Client in Wispro");
 
             var clientEntity = clientDto.ToClient(wisproResponse.Id, userId, wisproResponse.PublicId.Value);
 
-            await _clientRepository.Create(clientEntity);
+            await TelemetryExtensions.RunStage("client.save_sql", () => _clientRepository.Create(clientEntity), _logger);
 
-            await _emailSender.SendEmail(clientEntity, EventType.ClientCreation);
+            await TelemetryExtensions.RunStage("client.prepare_email", () => _emailSender.SendEmail(clientEntity, EventType.ClientCreation), _logger);
 
             return clientEntity.ToCreateClientResponse();
         }
