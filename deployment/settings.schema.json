@@ -191,7 +191,8 @@
     "name": "EmailQueue__BootstrapServers",
     "source": "EMAIL_KAFKA_BOOTSTRAP_SERVERS",
     "kind": "variable",
-    "required": true
+    "required": false,
+    "default": "kafka:9092"
   },
   {
     "name": "EmailQueue__Topic",

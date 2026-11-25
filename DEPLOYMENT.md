@@ -8,7 +8,7 @@ The API repository owns the .NET 10 API, SQL Server Express 2022, password-prote
 
 Use the dedicated Ubuntu droplet for this portal and API. Install Docker Engine, Docker Compose v2 (with `up --wait`), and curl. Give the deployment SSH user access to Docker and write access to the application directories. Create `/opt/exatech-indotel/api` and `/opt/exatech-indotel/portal`, owned by that user. Docker access grants administrative control of the host.
 
-Point both DNS names to the droplet IPv4 address. Allow inbound SSH on your configured port, HTTP 80 and HTTPS 443; optionally allow UDP 443 for HTTP/3. Caddy in the API stack owns those web ports and obtains and renews certificates. Keep Kafka reachable from the droplet; Kafka and the Rust email consumer are existing external dependencies. SQL Server Express 2022 runs in this Compose stack on the internal Docker network. Redis runs in the API stack with a password and persistent volume.
+Point both DNS names to the droplet IPv4 address. Allow inbound SSH on your configured port, HTTP 80 and HTTPS 443; optionally allow UDP 443 for HTTP/3. Caddy in the API stack owns those web ports and obtains and renews certificates. Kafka, SQL Server Express 2022 and password-protected Redis run in this Compose stack with persistent volumes. The Rust email consumer is deployed separately and must connect to the shared Docker network.
 
 Both stacks use the external Docker network `exatech-indotel`, subnet `172.29.20.0/24`. Deployment creates it automatically and rejects a conflicting subnet. Change DOCKER_NETWORK and DOCKER_SUBNET together in both repositories if this subnet overlaps your infrastructure. Use different hosts/networks/domains for Staging and Production; the default aliases are intended for one environment per droplet.
 
@@ -70,7 +70,7 @@ Use `.env.production.example` as the complete setting checklist. The workflows c
 | SIUBEN_PHASE2_DISABLED_CONTRACT_OTHER_REASON | Variable | `Siuben__Phase2__DisabledContractOtherReason` | Optional; empty |
 | REDIS_CONNECTION_STRING | Variable | `Redis__ConnectionString` | Default: `redis:6379,abortConnect=false`; keep credentials in `REDIS_PASSWORD` |
 | REDIS_INSTANCE_NAME | Variable | `Redis__InstanceName` | Default: `exatech-indotel-api:` |
-| EMAIL_KAFKA_BOOTSTRAP_SERVERS | Variable | `EmailQueue__BootstrapServers` | Required |
+| EMAIL_KAFKA_BOOTSTRAP_SERVERS | Variable | `EmailQueue__BootstrapServers` | Default: `kafka:9092` |
 | EMAIL_KAFKA_TOPIC | Variable | `EmailQueue__Topic` | Default: `email.requests` |
 | EMAIL_SYSTEM | Variable | `EmailQueue__System` | Default: `exatech-indotel-api` |
 | EMAIL_KAFKA_SECURITY_PROTOCOL | Variable | `EmailQueue__SecurityProtocol` | Default: `Plaintext` |
@@ -93,6 +93,10 @@ Use `.env.production.example` as the complete setting checklist. The workflows c
 | DOCKER_SUBNET | Variable | `ReverseProxy__KnownNetworks__0` | Default: `172.29.20.0/24` |
 
 The default Redis connection uses the Redis container. REDIS_PASSWORD is passed separately to both the API and Redis so passwords containing commas or dollar signs are preserved. If you choose an external Redis endpoint, REDIS_CONNECTION_STRING and REDIS_PASSWORD must match it; the bundled Redis container still runs. SQL_CONNECTION_STRING can override the bundled SQL Server connection. If it is empty or absent, deployment generates the internal connection from SQL_APP_PASSWORD. SQL bootstrap creates the Indotel database, indotel_api login, repository tables, default roles and email templates, then applies the incremental migrations. It does not create portal user accounts.
+
+Email publishing starts as a discarded asynchronous task after the template is rendered; HTTP requests do not wait for Kafka delivery. Publication failures are caught and logged without failing the completed operation. There is no application queue, database storage, or application-level retry. Pending publication may be lost when the API restarts.
+
+Deployment starts the bundled single-node Kafka broker before the API and waits for broker readiness. Set the API environment variable `EMAIL_KAFKA_BOOTSTRAP_SERVERS=kafka:9092` and `EMAIL_KAFKA_SECURITY_PROTOCOL=Plaintext`. Kafka has no published host ports and persists messages and broker metadata in `kafka_data`; normal deployments retain this volume. The broker uses a 512 MB JVM heap and seven-day log retention. This is a single broker without replication or high availability. The Rust email sender must join the same `exatech-indotel` Docker network and use `kafka:9092` to consume notifications; this pipeline deploys the broker, not the email sender.
 
 Keep ASPNETCORE_ENVIRONMENT and DOTNET_ENVIRONMENT equal (defaults Production, including on the Staging droplet). The deployed API disables Swagger by default, trusts forwarded headers from DOCKER_SUBNET, and allows only configured HTTPS CORS origins. JWT_SECRET_KEY must contain at least 32 UTF-8 bytes. EMAIL_KAFKA_SECURITY_PROTOCOL accepts Plaintext, Ssl, SaslPlaintext or SaslSsl; SASL also requires mechanism (Plain, ScramSha256 or ScramSha512), username and password. Kafka must be reachable by the API and by the Rust email sender.
 

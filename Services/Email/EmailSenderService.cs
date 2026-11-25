@@ -1,4 +1,3 @@
-
 using Confluent.Kafka;
 using Exatech_Indotel_API.Entities;
 using Exatech_Indotel_API.Models.Email;
@@ -14,13 +13,15 @@ namespace Exatech_Indotel_API.Services.Email
     {
         private readonly AppOptions _appOptions;
         private readonly IProducer<Null, string> _producer;
+        private readonly ILogger<EmailSenderService> _logger;
         private readonly EmailQueueOptions _queueOptions;
         private readonly IEmailTemplateRepository _emailTemplateRepository;
 
-        public EmailSenderService(IOptions<AppOptions> options, IProducer<Null, string> producer, IOptions<EmailQueueOptions> queueOptions, IEmailTemplateRepository emailtemplateRepository)
+        public EmailSenderService(IOptions<AppOptions> options, IProducer<Null, string> producer, IOptions<EmailQueueOptions> queueOptions, IEmailTemplateRepository emailtemplateRepository, ILogger<EmailSenderService> logger)
         {
             _appOptions = options.Value;
             _producer = producer;
+            _logger = logger;
             _queueOptions = queueOptions.Value;
             _emailTemplateRepository = emailtemplateRepository;
         }
@@ -52,10 +53,21 @@ namespace Exatech_Indotel_API.Services.Email
                 CC = copies?.ToArray() ?? Array.Empty<string>()
             };
 
-            await _producer.ProduceAsync(_queueOptions.Topic, new Message<Null, string>
+            var payload = JsonSerializer.Serialize(notification, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            _ = PublishToKafkaAsync(payload);
+        }
+
+        private async Task PublishToKafkaAsync(string payload)
+        {
+            try
             {
-                Value = JsonSerializer.Serialize(notification, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-            });
+                await _producer.ProduceAsync(_queueOptions.Topic, new Message<Null, string> { Value = payload });
+            }
+            catch (Exception exception)
+            {
+                // Do not log the exception's Kafka message: it contains client contact details.
+                _logger.LogError("Background Kafka email publication failed ({FailureType}).", exception.GetType().Name);
+            }
         }
     }
 }

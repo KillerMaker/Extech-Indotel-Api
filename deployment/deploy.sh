@@ -34,6 +34,7 @@ case "${RECREATE_DATABASE_CONTAINER:-false}" in
   *) echo "Invalid RECREATE_DATABASE_CONTAINER value." >&2; exit 1 ;;
 esac
 "${compose[@]}" pull
+"${compose[@]}" up -d --no-deps --wait --wait-timeout 180 kafka
 "${compose[@]}" up -d --no-deps --no-recreate --wait --wait-timeout 120 redis
 "${compose[@]}" up -d --no-deps "${sql_flags[@]}" --wait --wait-timeout 300 sqlserver
 docker volume inspect "$sql_volume" >/dev/null

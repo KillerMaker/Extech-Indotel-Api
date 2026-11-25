@@ -51,6 +51,8 @@ jobs:
         run: python3 deployment/check-sql.py
       - name: Validate SQL Server port configuration
         run: python3 deployment/check-sql-ports.py
+      - name: Check Kafka startup and persistent delivery
+        run: python3 deployment/check-kafka.py
       - name: Name the immutable release image
         id: image
         run: |
