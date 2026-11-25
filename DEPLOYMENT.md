@@ -68,7 +68,7 @@ Use `.env.production.example` as the complete setting checklist. The workflows c
 | SIUBEN_PHASE2_PROVIDER | Variable | `Siuben__Phase2__Provider` | Default: `Exatech` |
 | SIUBEN_PHASE2_DISABLED_CONTRACT_REASON | Variable | `Siuben__Phase2__DisabledContractReason` | Default: `CancelaciÃƒÂ³n` |
 | SIUBEN_PHASE2_DISABLED_CONTRACT_OTHER_REASON | Variable | `Siuben__Phase2__DisabledContractOtherReason` | Optional; empty |
-| REDIS_CONNECTION_STRING | Secret | `Redis__ConnectionString` | Default: `redis:6379,abortConnect=false` |
+| REDIS_CONNECTION_STRING | Variable | `Redis__ConnectionString` | Default: `redis:6379,abortConnect=false`; keep credentials in `REDIS_PASSWORD` |
 | REDIS_INSTANCE_NAME | Variable | `Redis__InstanceName` | Default: `exatech-indotel-api:` |
 | EMAIL_KAFKA_BOOTSTRAP_SERVERS | Variable | `EmailQueue__BootstrapServers` | Required |
 | EMAIL_KAFKA_TOPIC | Variable | `EmailQueue__Topic` | Default: `email.requests` |

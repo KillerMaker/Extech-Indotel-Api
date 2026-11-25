@@ -176,7 +176,7 @@
   {
     "name": "Redis__ConnectionString",
     "source": "REDIS_CONNECTION_STRING",
-    "kind": "secret",
+    "kind": "variable",
     "required": false,
     "default": "redis:6379,abortConnect=false"
   },
